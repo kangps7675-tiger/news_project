@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchRelatedNews } from "@/lib/googleNewsRss";
 import { classifyMediaTier } from "@/lib/verificationTiers";
 
+export const maxDuration = 60;
+
 const MAX_Q = 400;
 
 export async function GET(req: NextRequest) {
@@ -15,7 +17,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { query, items } = await fetchRelatedNews(raw, 16);
+    const { query, items } = await fetchRelatedNews(raw, 28);
     const withTier = items.map((item) => ({
       ...item,
       // URL·매체명으로 재확인. 이미 붙은 티어도 덮어써 승격/강등 방지
@@ -25,7 +27,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       query,
       items: withTier,
-      note: "T1~T4 매체(관영·권위주의 포함)를 티어별로 모아요. 티어는 바꾸지 않아요.",
+      note: "다국어·다매체(T1~T4·관영 포함)로 최근 보도를 넓게 모아요. 티어는 바꾸지 않아요.",
     });
   } catch (err) {
     console.error("[sources]", err);

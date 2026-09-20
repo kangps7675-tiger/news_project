@@ -16,7 +16,7 @@ export type GoogleNewsItem = {
 
 /**
  * 티어 검색용 로케일. 국가 나열이 아니라 T1~T4 매체가 색인되는 창구.
- * zh/ru/ar는 관영·권위주의(T4) 노출용.
+ * zh/ru/ar는 관영·권위주의(T4) 노출용. de/fr/es는 유럽·중남미 심층 보도용.
  */
 const FEED = {
   en: "https://news.google.com/rss/search?hl=en-US&gl=US&ceid=US:en&q=",
@@ -25,20 +25,76 @@ const FEED = {
   zh: "https://news.google.com/rss/search?hl=zh-CN&gl=CN&ceid=CN:zh-Hans&q=",
   ru: "https://news.google.com/rss/search?hl=ru&gl=RU&ceid=RU:ru&q=",
   ar: "https://news.google.com/rss/search?hl=ar&gl=AE&ceid=AE:ar&q=",
+  de: "https://news.google.com/rss/search?hl=de&gl=DE&ceid=DE:de&q=",
+  fr: "https://news.google.com/rss/search?hl=fr&gl=FR&ceid=FR:fr&q=",
+  es: "https://news.google.com/rss/search?hl=es&gl=ES&ceid=ES:es&q=",
 } as const;
+
+type FeedKey = keyof typeof FEED;
 
 const TIER_ORDER: Exclude<MediaTier, "TX">[] = ["T1", "T2", "T3", "T4"];
 
-/** 티어별로 어느 색인 창을 칠지 (요청 수 제한) */
-const TIER_WINDOWS: Record<Exclude<MediaTier, "TX">, (keyof typeof FEED)[]> = {
-  T1: ["en", "ko"],
+/** 티어별로 어느 색인 창을 칠지 (요청 수·포괄성 균형) */
+const TIER_WINDOWS: Record<Exclude<MediaTier, "TX">, FeedKey[]> = {
+  T1: ["en", "ko", "de"],
   T2: ["en", "ko", "ja"],
-  T3: ["en", "zh"],
+  T3: ["en", "zh", "es"],
   T4: ["en", "zh", "ru", "ar"],
 };
 
+/** 티어별 site: 묶음 상한 */
+const TIER_CHUNK_CAP: Record<Exclude<MediaTier, "TX">, number> = {
+  T1: 2,
+  T2: 2,
+  T3: 2,
+  T4: 2,
+};
+
+/**
+ * 카드·지정학 키워드 → 영·아랍 등 교차 검색어.
+ * 본문에 한국어만 있어도 해외 심층 보도를 잡기 위함.
+ */
+const TERM_ALIASES: Record<string, string[]> = {
+  후티: ["Houthi", "Ansar Allah", "Huthi"],
+  후티반군: ["Houthi rebels", "Ansar Allah"],
+  예멘: ["Yemen", "Yemeni"],
+  사우디: ["Saudi Arabia", "Saudi"],
+  홍해: ["Red Sea", "Bab el-Mandeb"],
+  바브엘만데브: ["Bab el-Mandeb", "Bab al-Mandab"],
+  페림: ["Perim Island", "Mayyun"],
+  모카: ["Mocha Yemen", "Mokha"],
+  호르무즈: ["Strait of Hormuz", "Hormuz Strait"],
+  이란: ["Iran", "Islamic Republic of Iran"],
+  이스라엘: ["Israel", "IDF"],
+  가자: ["Gaza", "Gaza Strip"],
+  레바논: ["Lebanon", "Hezbollah"],
+  헤즈볼라: ["Hezbollah", "Hizballah"],
+  우크라이나: ["Ukraine", "Ukrainian"],
+  러시아: ["Russia", "Russian"],
+  북한: ["North Korea", "DPRK", "Kim Jong Un"],
+  중국: ["China", "Beijing", "PLA"],
+  대만: ["Taiwan", "Taiwan Strait"],
+  남중국해: ["South China Sea"],
+  나타즈: ["Natanz"],
+  포르도: ["Fordow", "Fordo"],
+  이스파한: ["Isfahan"],
+  부셰흐르: ["Bushehr"],
+  샤헤드: ["Shahed drone", "Shahed-136"],
+  게란: ["Geran-2", "Geran drone"],
+  옐라부가: ["Yelabuga", "Alabuga"],
+  크림: ["Crimea"],
+  돈바스: ["Donbas", "Donbass"],
+  흑해: ["Black Sea"],
+  수에즈: ["Suez Canal"],
+  말라카: ["Strait of Malacca", "Malacca Strait"],
+  대만해협: ["Taiwan Strait"],
+  원유: ["crude oil", "oil price"],
+  금값: ["gold price", "bullion"],
+  달러: ["US dollar", "DXY"],
+};
+
 /** 뉴스/주장 텍스트에서 RSS 검색어를 짧게 뽑는다. */
-export function buildSearchQuery(text: string, maxLen = 96): string {
+export function buildSearchQuery(text: string, maxLen = 110): string {
   const cleaned = text
     .replace(/[→←↔⇒⇐]/g, " ")
     .replace(/["""'']/g, "")
@@ -53,20 +109,48 @@ export function buildSearchQuery(text: string, maxLen = 96): string {
 
 /**
  * 같은 본문으로 여러 검색어를 만든다.
- * 첫 문장 → 핵심 고유명사/숫자 → 짧은 키워드 순으로 넓혀 빈 결과를 줄인다.
+ * 첫 문장 → 키워드 → 영문 별칭 → 짧은 핵심어 순으로 넓혀 빈·얕은 결과를 줄인다.
  */
 export function buildSearchQueries(text: string): string[] {
   const primary = buildSearchQuery(text);
   const tokens = extractKeywords(text);
-  const keywordQuery = tokens.slice(0, 6).join(" ");
-  const shortQuery = tokens.slice(0, 3).join(" ");
+  const keywordQuery = tokens.slice(0, 8).join(" ");
+  const shortQuery = tokens.slice(0, 4).join(" ");
+  const aliasQueries = expandAliasQueries(text, tokens);
 
   const out: string[] = [];
-  for (const q of [primary, keywordQuery, shortQuery]) {
+  for (const q of [primary, keywordQuery, ...aliasQueries, shortQuery]) {
     const t = q.trim();
     if (t.length >= 2 && !out.includes(t)) out.push(t);
   }
   return out.length ? out : [primary || text.slice(0, 40)].filter(Boolean);
+}
+
+function expandAliasQueries(text: string, tokens: string[]): string[] {
+  const lower = text.toLowerCase();
+  const enTerms: string[] = [];
+  for (const [ko, enList] of Object.entries(TERM_ALIASES)) {
+    if (lower.includes(ko.toLowerCase()) || tokens.some((t) => t.includes(ko))) {
+      enTerms.push(...enList.slice(0, 2));
+    }
+  }
+  const uniqEn: string[] = [];
+  for (const t of enTerms) {
+    if (!uniqEn.some((u) => u.toLowerCase() === t.toLowerCase())) uniqEn.push(t);
+  }
+  if (!uniqEn.length) return [];
+
+  const queries: string[] = [];
+  // 핵심 영문 묶음 (최대 2개 쿼리)
+  queries.push(uniqEn.slice(0, 4).join(" "));
+  if (uniqEn.length > 4) {
+    queries.push(uniqEn.slice(4, 8).join(" "));
+  }
+  // 단일 고유명사 심층 (따옴표로 정확 매칭)
+  for (const t of uniqEn.slice(0, 3)) {
+    if (t.includes(" ")) queries.push(`"${t}"`);
+  }
+  return queries;
 }
 
 function extractKeywords(text: string): string[] {
@@ -136,62 +220,85 @@ export async function fetchGoogleNewsRss(
 }
 
 /**
- * T1~T4 매체 도메인(site:)으로 각국·관영까지 긁고,
+ * T1~T4 매체 도메인(site:) + 다국어·다검색어로 긁고,
  * 티어 균형을 맞춰 돌려준다. 티어는 절대 바꾸지 않는다.
  */
 export async function fetchRelatedNews(
   text: string,
-  limit = 16,
+  limit = 28,
 ): Promise<{ query: string; items: GoogleNewsItem[] }> {
   const queries = buildSearchQueries(text);
   const topic = queries[0] || text.slice(0, 80).trim();
   if (!topic) return { query: "", items: [] };
 
   const jobs: Promise<Omit<GoogleNewsItem, "url">[]>[] = [];
+  const pushJob = (base: string, q: string, n: number, tag: string) => {
+    jobs.push(
+      fetchOneFeedRaw(base, q, n).catch((err) => {
+        console.warn(`[google-news] ${tag}`, err);
+        return [];
+      }),
+    );
+  };
+
+  // 1) 티어별 site: + when:30d — 최근 한 달 심층 보도
+  const enAlias = queries.find((q) => /^[A-Za-z"']/.test(q.trim())) || null;
 
   for (const tier of TIER_ORDER) {
-    // T4·T2는 매체가 많아 site: 묶음 2개까지
-    const maxChunks = tier === "T4" || tier === "T2" ? 2 : 1;
-    const chunks = siteQueryChunks(tier, 5).slice(0, maxChunks);
+    const chunks = siteQueryChunks(tier, 5).slice(0, TIER_CHUNK_CAP[tier]);
     for (const sitePart of chunks) {
-      const q = `${topic} ${sitePart}`;
       for (const win of TIER_WINDOWS[tier]) {
-        jobs.push(
-          fetchOneFeedRaw(FEED[win], q, 8).catch((err) => {
-            console.warn(`[google-news] ${tier}/${win}`, err);
-            return [];
-          }),
+        pushJob(
+          FEED[win],
+          `${topic} ${sitePart} when:30d`,
+          10,
+          `${tier}/${win}`,
+        );
+      }
+      // T1·T4는 영문 별칭으로 한 번 더 (해외·관영 심층)
+      if (enAlias && (tier === "T1" || tier === "T4")) {
+        pushJob(
+          FEED.en,
+          `${enAlias} ${sitePart} when:30d`,
+          10,
+          `${tier}/en-alias`,
         );
       }
     }
   }
 
-  // 주제 보조 검색 (목록 밖 TX 보완용). 분류는 classify가 엄격히 처리.
-  for (const win of ["en", "ko", "zh", "ru"] as const) {
-    jobs.push(
-      fetchOneFeedRaw(FEED[win], topic, 4).catch((err) => {
-        console.warn(`[google-news] open/${win}`, err);
-        return [];
-      }),
-    );
+  // 2) 열린 검색 — 검색어 변형 × 로케일 (지역·TX 보완)
+  const openWindows: FeedKey[] = ["en", "ko", "zh", "ru", "ar", "de"];
+  for (const q of queries.slice(0, 2)) {
+    for (const win of openWindows) {
+      pushJob(FEED[win], `${q} when:30d`, 6, `open/${win}`);
+    }
+  }
+
+  // 3) 단기 속보 (when:7d)
+  for (const win of ["en", "ko"] as const) {
+    pushJob(FEED[win], `${topic} when:7d`, 8, `flash/${win}`);
   }
 
   const batches = await Promise.all(jobs);
-  const raw = dedupeRaw(batches.flat());
+  let raw = dedupeRaw(batches.flat());
+  raw = sortByPublishedDesc(raw).slice(0, 56);
 
-  const resolved = await Promise.all(
-    raw.map(async (item) => {
-      const real = await resolvePublisherUrlFast(item.link);
-      const url = real || item.link;
-      const mediaTier = classifyMediaTier(item.source, url);
-      return {
-        ...item,
-        url,
-        link: url,
-        mediaTier,
-      };
-    }),
-  );
+  // 상위는 HTTP follow로 원문, 나머지는 빠른 해석
+  const resolved = await mapPool(raw, 10, async (item, index) => {
+    const real =
+      index < 28
+        ? await resolvePublisherUrlDeep(item.link)
+        : await resolvePublisherUrlFast(item.link);
+    const url = real || item.link;
+    const mediaTier = classifyMediaTier(item.source, url);
+    return {
+      ...item,
+      url,
+      link: url,
+      mediaTier,
+    };
+  });
 
   const balanced = balanceByTier(resolved, limit);
   return { query: topic, items: balanced };
@@ -214,7 +321,12 @@ function balanceByTier(
     buckets[t]?.push(item);
   }
 
-  const perCore = Math.max(2, Math.floor(limit / 4));
+  // 티어 안에서 최신 보도 우선
+  for (const t of Object.keys(buckets) as MediaTier[]) {
+    buckets[t] = sortByPublishedDesc(buckets[t]);
+  }
+
+  const perCore = Math.max(3, Math.floor(limit / 4));
   const out: GoogleNewsItem[] = [];
   const used = new Set<string>();
 
@@ -238,7 +350,7 @@ function balanceByTier(
     take(buckets[tier], limit - out.length);
   }
   if (out.length < limit) {
-    take(buckets.TX, Math.min(2, limit - out.length));
+    take(buckets.TX, Math.min(4, limit - out.length));
   }
 
   const rank: Record<string, number> = {
@@ -248,10 +360,43 @@ function balanceByTier(
     T4: 3,
     TX: 4,
   };
-  out.sort(
-    (a, b) =>
-      (rank[a.mediaTier || "TX"] ?? 9) - (rank[b.mediaTier || "TX"] ?? 9),
+  out.sort((a, b) => {
+    const tr =
+      (rank[a.mediaTier || "TX"] ?? 9) - (rank[b.mediaTier || "TX"] ?? 9);
+    if (tr !== 0) return tr;
+    return publishedMs(b.publishedAt) - publishedMs(a.publishedAt);
+  });
+  return out;
+}
+
+function sortByPublishedDesc<T extends { publishedAt: string | null }>(
+  items: T[],
+): T[] {
+  return [...items].sort(
+    (a, b) => publishedMs(b.publishedAt) - publishedMs(a.publishedAt),
   );
+}
+
+function publishedMs(pub: string | null | undefined): number {
+  if (!pub) return 0;
+  const t = Date.parse(pub);
+  return Number.isFinite(t) ? t : 0;
+}
+
+async function mapPool<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i], i);
+    }
+  });
+  await Promise.all(workers);
   return out;
 }
 
@@ -264,10 +409,10 @@ async function fetchOneFeedRaw(
   const res = await fetch(url, {
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (compatible; news-context/0.3; +https://localhost)",
+        "Mozilla/5.0 (compatible; news-context/0.4; +https://localhost)",
       Accept: "application/rss+xml, application/xml, text/xml, */*",
     },
-    next: { revalidate: 180 },
+    next: { revalidate: 120 },
   });
 
   if (!res.ok) {
@@ -285,18 +430,6 @@ function dedupeRaw(
   const out: Omit<GoogleNewsItem, "url">[] = [];
   for (const item of items) {
     const key = normalizeKey(item.link) || normalizeKey(item.title);
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    out.push(item);
-  }
-  return out;
-}
-
-function dedupeItems(items: GoogleNewsItem[]): GoogleNewsItem[] {
-  const seen = new Set<string>();
-  const out: GoogleNewsItem[] = [];
-  for (const item of items) {
-    const key = normalizeKey(item.url || item.link) || normalizeKey(item.title);
     if (!key || seen.has(key)) continue;
     seen.add(key);
     out.push(item);
@@ -354,6 +487,18 @@ function extractHttpFromHtml(html: string): string | null {
   return null;
 }
 
+/** 빠른 경로 후, 구글 링크면 HTTP follow로 원문 확보 */
+async function resolvePublisherUrlDeep(
+  googleLink: string,
+): Promise<string | null> {
+  const fast = await resolvePublisherUrlFast(googleLink);
+  if (fast && !/news\.google\.com/i.test(fast)) return fast;
+  if (!googleLink || !/news\.google\.com/i.test(googleLink)) {
+    return googleLink || fast;
+  }
+  return resolvePublisherUrl(googleLink);
+}
+
 /** 빠른 경로: 파라미터·article id만. HTTP follow 없음. */
 async function resolvePublisherUrlFast(
   googleLink: string,
@@ -390,7 +535,7 @@ export async function resolvePublisherUrl(
 
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2200);
+    const timer = setTimeout(() => controller.abort(), 2800);
     const articleUrl = googleLink
       .replace("/rss/articles/", "/articles/")
       .replace("/rss/search?", "/search?");

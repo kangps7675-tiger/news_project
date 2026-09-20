@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
     const [analysis, relatedPack] = await Promise.all([
       analyzeNews(text),
-      fetchRelatedNews(text, 12).catch((err) => {
+      fetchRelatedNews(text, 20).catch((err) => {
         console.warn("[analyze] google rss", err);
         return { query: "", items: [] };
       }),

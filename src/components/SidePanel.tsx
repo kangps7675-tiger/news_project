@@ -313,8 +313,9 @@ function RelatedSourcesList({
       <h3>관련 뉴스 (T1~T4)</h3>
       {query && <p className="muted rss-query">검색: {query}</p>}
       <p className="muted">
-        각국 매체와 관영·권위주의(T4)까지 티어 목록으로 모았어요. T4는 당사자
-        주장 신호로만 봐요. 티어는 올리지 않아요.
+        한국어·영어 별칭과 여러 나라 뉴스창, T1~T4(관영 포함) 매체로 최근
+        한 달 보도를 넓게 모았어요. T4는 당사자 주장 신호로만 봐요. 티어는
+        올리지 않아요.
       </p>
       <ul className="sources news-url-list">
         {items.map((item) => {

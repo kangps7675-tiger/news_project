@@ -181,6 +181,20 @@ export const MEDIA_OUTLETS: MediaOutlet[] = [
     domains: ["nhk.or.jp"],
     aliases: ["nhk"],
   },
+  {
+    id: "economist",
+    label: "The Economist",
+    tier: "T1",
+    domains: ["economist.com"],
+    aliases: ["economist", "이코노미스트"],
+  },
+  {
+    id: "dw",
+    label: "DW",
+    tier: "T1",
+    domains: ["dw.com"],
+    aliases: ["deutsche welle", "dw"],
+  },
   // —— T2 ——
   {
     id: "cnn",
@@ -280,6 +294,34 @@ export const MEDIA_OUTLETS: MediaOutlet[] = [
     domains: ["cbsnews.com"],
     aliases: ["cbs news", "cbs"],
   },
+  {
+    id: "lemonde",
+    label: "Le Monde",
+    tier: "T2",
+    domains: ["lemonde.fr"],
+    aliases: ["le monde", "lemonde"],
+  },
+  {
+    id: "nikkei",
+    label: "Nikkei",
+    tier: "T2",
+    domains: ["nikkei.com", "asia.nikkei.com"],
+    aliases: ["nikkei", "닛케이"],
+  },
+  {
+    id: "haaretz",
+    label: "Haaretz",
+    tier: "T2",
+    domains: ["haaretz.com"],
+    aliases: ["haaretz"],
+  },
+  {
+    id: "timesofisrael",
+    label: "Times of Israel",
+    tier: "T2",
+    domains: ["timesofisrael.com"],
+    aliases: ["times of israel"],
+  },
   // —— T3 ——
   {
     id: "scmp",
@@ -350,6 +392,34 @@ export const MEDIA_OUTLETS: MediaOutlet[] = [
     tier: "T3",
     domains: ["nknews.org"],
     aliases: ["nk news", "nknews"],
+  },
+  {
+    id: "middleeasteye",
+    label: "Middle East Eye",
+    tier: "T3",
+    domains: ["middleeasteye.net"],
+    aliases: ["middle east eye"],
+  },
+  {
+    id: "isw",
+    label: "ISW",
+    tier: "T3",
+    domains: ["understandingwar.org"],
+    aliases: ["institute for the study of war", "isw"],
+  },
+  {
+    id: "csis",
+    label: "CSIS",
+    tier: "T3",
+    domains: ["csis.org"],
+    aliases: ["csis", "center for strategic"],
+  },
+  {
+    id: "elpais",
+    label: "El País",
+    tier: "T3",
+    domains: ["elpais.com"],
+    aliases: ["el pais", "elpaís"],
   },
   // —— T4 관영·준관영 (권위주의 포함) ——
   {
@@ -456,6 +526,20 @@ export const MEDIA_OUTLETS: MediaOutlet[] = [
     tier: "T4",
     domains: ["sana.sy"],
     aliases: ["sana"],
+  },
+  {
+    id: "almanar",
+    label: "Al-Manar",
+    tier: "T4",
+    domains: ["almanar.com.lb"],
+    aliases: ["al-manar", "al manar", "알마나르"],
+  },
+  {
+    id: "yemenpost",
+    label: "Saba News",
+    tier: "T4",
+    domains: ["sabanew.net", "saba.ye"],
+    aliases: ["saba news", "saba"],
   },
 ];
 

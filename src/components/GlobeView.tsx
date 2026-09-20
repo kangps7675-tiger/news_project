@@ -64,6 +64,39 @@ type CountryFeat = {
   __active?: boolean;
 };
 
+const POLY_ALT_BASE = 0.0035;
+const POLY_ALT_ACTIVE = 0.006;
+const POLY_ALT_HOVER = 0.014;
+
+function countryKey(f: CountryFeat | null | undefined) {
+  if (!f?.properties) return "";
+  return f.properties.ADMIN || f.properties.NAME || "";
+}
+
+function redPolygonColors(kind: "hover" | "active" | "idle", vivid: boolean) {
+  if (kind === "hover") {
+    return {
+      cap: "rgba(220, 38, 38, 0.88)",
+      side: "rgba(153, 27, 27, 0.75)",
+      stroke: "rgba(254, 202, 202, 0.95)",
+    };
+  }
+  if (kind === "active") {
+    if (vivid) return intelCountryColors(true);
+    return {
+      cap: "rgba(185, 48, 48, 0.72)",
+      side: "rgba(120, 30, 30, 0.55)",
+      stroke: "rgba(220, 100, 100, 0.8)",
+    };
+  }
+  if (vivid) return intelCountryColors(false);
+  return {
+    cap: "rgba(232, 214, 178, 0.92)",
+    side: "rgba(160, 135, 95, 0.55)",
+    stroke: "rgba(90, 65, 35, 0.55)",
+  };
+}
+
 function parchmentTagColor(
   tag: ConfirmationTag | "focus",
   active: boolean,
@@ -108,7 +141,7 @@ export default function GlobeView({
   const globeRef = useRef<any>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [countries, setCountries] = useState<CountryFeat[]>([]);
-  const [rise, setRise] = useState(0.01);
+  const [hoveredKey, setHoveredKey] = useState("");
 
   const vivid = intelMode || !!activeClaim;
 
@@ -169,20 +202,6 @@ export default function GlobeView({
       /* ignore */
     }
   }, [size.w, size.h, countries.length, vivid]);
-
-  useEffect(() => {
-    setRise(0.006);
-    let frame = 0;
-    const start = performance.now();
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / 950);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setRise(0.006 + eased * (vivid ? 0.11 : 0.09));
-      if (t < 1) frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [activeCard?.id, activeClaim?.id, vivid]);
 
   const activeCountryNames = useMemo(() => {
     if (!activeCard) return Object.values(CARD_COUNTRIES).flat();
@@ -356,35 +375,54 @@ export default function GlobeView({
           atmosphereColor={vivid ? "#7c4dff" : "#c9b896"}
           atmosphereAltitude={vivid ? 0.2 : 0.14}
           polygonsData={polygonData}
-          polygonAltitude={(d: object) =>
-            (d as CountryFeat).__active ? rise : 0.004
-          }
+          polygonAltitude={(d: object) => {
+            const feat = d as CountryFeat;
+            const key = countryKey(feat);
+            if (hoveredKey && key === hoveredKey) return POLY_ALT_HOVER;
+            if (feat.__active) return POLY_ALT_ACTIVE;
+            return POLY_ALT_BASE;
+          }}
           polygonCapColor={(d: object) => {
-            const active = !!(d as CountryFeat).__active;
-            if (vivid) return intelCountryColors(active).cap;
-            return active
-              ? "rgba(176, 120, 56, 0.88)"
-              : "rgba(232, 214, 178, 0.92)";
+            const feat = d as CountryFeat;
+            const key = countryKey(feat);
+            const kind =
+              hoveredKey && key === hoveredKey
+                ? "hover"
+                : feat.__active
+                  ? "active"
+                  : "idle";
+            return redPolygonColors(kind, vivid).cap;
           }}
           polygonSideColor={(d: object) => {
-            const active = !!(d as CountryFeat).__active;
-            if (vivid) return intelCountryColors(active).side;
-            return active
-              ? "rgba(110, 70, 30, 0.95)"
-              : "rgba(160, 135, 95, 0.55)";
+            const feat = d as CountryFeat;
+            const key = countryKey(feat);
+            const kind =
+              hoveredKey && key === hoveredKey
+                ? "hover"
+                : feat.__active
+                  ? "active"
+                  : "idle";
+            return redPolygonColors(kind, vivid).side;
           }}
           polygonStrokeColor={(d: object) => {
-            const active = !!(d as CountryFeat).__active;
-            if (vivid) return intelCountryColors(active).stroke;
-            return active
-              ? "rgba(70, 42, 18, 0.95)"
-              : "rgba(90, 65, 35, 0.55)";
+            const feat = d as CountryFeat;
+            const key = countryKey(feat);
+            const kind =
+              hoveredKey && key === hoveredKey
+                ? "hover"
+                : feat.__active
+                  ? "active"
+                  : "idle";
+            return redPolygonColors(kind, vivid).stroke;
           }}
-          polygonsTransitionDuration={750}
+          polygonsTransitionDuration={280}
+          onPolygonHover={(d: object | null) => {
+            setHoveredKey(countryKey(d as CountryFeat | null));
+          }}
           pointsData={points}
           pointLat="lat"
           pointLng="lng"
-          pointAltitude={(d: object) => (d as PointDatum).alt * (rise / 0.09)}
+          pointAltitude={(d: object) => (d as PointDatum).alt}
           pointRadius={(d: object) => (d as PointDatum).size}
           pointColor={(d: object) => {
             const p = d as PointDatum;
@@ -425,7 +463,7 @@ export default function GlobeView({
       )}
       <div className="globe-legend" aria-hidden>
         <span className="lg block">
-          {vivid ? "인텔 · 솟은 나라" : "솟은 나라 = 이야기"}
+          {vivid ? "인텔 · 호버 시 붉은 면" : "나라 위에 올리면 붉게 살짝 뜸"}
         </span>
         <span className="lg arrow">
           {vivid ? "알록달록 화살표 = 흐름" : "먹선 화살표 = 흐름"}

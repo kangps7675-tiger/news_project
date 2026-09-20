@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { query, items } = await fetchRelatedNews(raw, 28);
+    const { query, items } = await fetchRelatedNews(raw, 24);
     const withTier = items.map((item) => ({
       ...item,
       // URL·매체명으로 재확인. 이미 붙은 티어도 덮어써 승격/강등 방지
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       query,
       items: withTier,
-      note: "다국어·다매체(T1~T4·관영 포함)로 최근 보도를 넓게 모아요. 티어는 바꾸지 않아요.",
+      note: "영문 검색어로 모은 뒤 제목은 한글로 보여 줘요. 티어는 바꾸지 않아요.",
     });
   } catch (err) {
     console.error("[sources]", err);

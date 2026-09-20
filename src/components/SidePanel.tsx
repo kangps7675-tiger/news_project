@@ -233,7 +233,16 @@ export default function SidePanel(props: Props) {
                 기사를 바로 찾아요.
               </p>
             )}
-            <ClaimRssLookup querySeed={activeClaim.text} autoStart />
+            <ClaimRssLookup
+              querySeed={[
+                activeCard.name,
+                activeClaim.text,
+                ...activeCard.triggers,
+                ...activeClaim.scene.callouts.map((c) => c.title),
+                ...activeClaim.scene.layers.map((l) => l.label),
+              ].join(" ")}
+              autoStart
+            />
             {activeClaim.counterClaim && (
               <>
                 <h3>반대·상충 주장</h3>
@@ -311,11 +320,10 @@ function RelatedSourcesList({
   return (
     <div className="related-rss">
       <h3>관련 뉴스 (T1~T4)</h3>
-      {query && <p className="muted rss-query">검색: {query}</p>}
+      {query && <p className="muted rss-query">영문 검색: {query}</p>}
       <p className="muted">
-        한국어·영어 별칭과 여러 나라 뉴스창, T1~T4(관영 포함) 매체로 최근
-        한 달 보도를 넓게 모았어요. T4는 당사자 주장 신호로만 봐요. 티어는
-        올리지 않아요.
+        영문 키워드로 해외·관영 보도를 찾고, 제목은 한글로 보여 줘요. T4는
+        당사자 주장 신호로만 봐요. 티어는 올리지 않아요.
       </p>
       <ul className="sources news-url-list">
         {items.map((item) => {
@@ -329,6 +337,9 @@ function RelatedSourcesList({
               <a href={href} target="_blank" rel="noreferrer">
                 {item.title}
               </a>
+              {item.titleOriginal && item.titleOriginal !== item.title && (
+                <span className="rss-meta muted">{item.titleOriginal}</span>
+              )}
               <span className="rss-meta">
                 <span
                   className="tier-mini"

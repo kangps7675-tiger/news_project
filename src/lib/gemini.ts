@@ -101,6 +101,72 @@ ${newsText}
   return parsed;
 }
 
+/**
+ * 영문(또는 기타) 뉴스 헤드라인을 자연스러운 한국어로 번역.
+ * 실패·키 없으면 원문 배열을 그대로 반환.
+ */
+export async function translateTitlesToKorean(
+  titles: string[],
+): Promise<string[]> {
+  if (!titles.length) return [];
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return titles;
+
+  // 이미 한글이 많으면 번역 스킵
+  const need = titles.map((t) => {
+    const hangul = (t.match(/[\uac00-\ud7a3]/g) || []).length;
+    return hangul < Math.max(2, t.length * 0.25);
+  });
+  if (!need.some(Boolean)) return titles;
+
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-3.6-flash",
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 4096,
+        responseMimeType: "application/json",
+      },
+    });
+
+    const payload = titles.map((t, i) => ({ i, t }));
+    const prompt = `뉴스 헤드라인을 자연스러운 한국어로 번역하세요.
+규칙:
+- 입력 JSON 배열의 각 항목 t를 번역해 같은 길이·같은 순서의 문자열 배열만 반환
+- 고유명사(지명·인명·매체명·약어)는 음차 또는 통용 표기 유지
+- 의미 추가·요약·해설 금지. 제목만 번역
+- 마크다운 코드펜스 금지
+
+입력:
+${JSON.stringify(payload)}
+`;
+
+    const result = await model.generateContent(prompt);
+    const raw = extractJson(result.response.text());
+    const parsed = JSON.parse(raw) as unknown;
+    let arr: string[] | null = null;
+    if (Array.isArray(parsed)) {
+      arr = parsed.map((x) =>
+        typeof x === "string"
+          ? x
+          : typeof x === "object" && x && "t" in x
+            ? String((x as { t: unknown }).t)
+            : "",
+      );
+    }
+    if (!arr || arr.length !== titles.length) return titles;
+    return titles.map((orig, i) => {
+      if (!need[i]) return orig;
+      const tr = (arr![i] || "").trim();
+      return tr || orig;
+    });
+  } catch (err) {
+    console.warn("[translateTitlesToKorean]", err);
+    return titles;
+  }
+}
+
 function extractJson(s: string) {
   const cleaned = s.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
   const start = cleaned.indexOf("{");

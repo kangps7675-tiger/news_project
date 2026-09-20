@@ -3,9 +3,13 @@ import {
   siteQueryChunks,
   type MediaTier,
 } from "@/lib/verificationTiers";
+import { translateTitlesToKorean } from "@/lib/gemini";
 
 export type GoogleNewsItem = {
+  /** 화면용 — 가능하면 한글 번역 제목 */
   title: string;
+  /** 원문 헤드라인 */
+  titleOriginal?: string;
   link: string;
   /** 가능하면 언론사 원문 URL */
   url: string;
@@ -15,34 +19,29 @@ export type GoogleNewsItem = {
 };
 
 /**
- * 티어 검색용 로케일. 국가 나열이 아니라 T1~T4 매체가 색인되는 창구.
- * zh/ru/ar는 관영·권위주의(T4) 노출용. de/fr/es는 유럽·중남미 심층 보도용.
+ * 검색은 영어 피드 중심. zh/ru/ar는 관영(T4) 보완용.
  */
 const FEED = {
   en: "https://news.google.com/rss/search?hl=en-US&gl=US&ceid=US:en&q=",
   ko: "https://news.google.com/rss/search?hl=ko&gl=KR&ceid=KR:ko&q=",
-  ja: "https://news.google.com/rss/search?hl=ja&gl=JP&ceid=JP:ja&q=",
   zh: "https://news.google.com/rss/search?hl=zh-CN&gl=CN&ceid=CN:zh-Hans&q=",
   ru: "https://news.google.com/rss/search?hl=ru&gl=RU&ceid=RU:ru&q=",
   ar: "https://news.google.com/rss/search?hl=ar&gl=AE&ceid=AE:ar&q=",
   de: "https://news.google.com/rss/search?hl=de&gl=DE&ceid=DE:de&q=",
-  fr: "https://news.google.com/rss/search?hl=fr&gl=FR&ceid=FR:fr&q=",
-  es: "https://news.google.com/rss/search?hl=es&gl=ES&ceid=ES:es&q=",
 } as const;
 
 type FeedKey = keyof typeof FEED;
 
 const TIER_ORDER: Exclude<MediaTier, "TX">[] = ["T1", "T2", "T3", "T4"];
 
-/** 티어별로 어느 색인 창을 칠지 (요청 수·포괄성 균형) */
+/** site: 검색은 영어 색인 우선 (요청 수 절약) */
 const TIER_WINDOWS: Record<Exclude<MediaTier, "TX">, FeedKey[]> = {
-  T1: ["en", "ko", "de"],
-  T2: ["en", "ko", "ja"],
-  T3: ["en", "zh", "es"],
-  T4: ["en", "zh", "ru", "ar"],
+  T1: ["en"],
+  T2: ["en"],
+  T3: ["en"],
+  T4: ["en", "ru", "ar", "zh"],
 };
 
-/** 티어별 site: 묶음 상한 */
 const TIER_CHUNK_CAP: Record<Exclude<MediaTier, "TX">, number> = {
   T1: 2,
   T2: 2,
@@ -51,106 +50,159 @@ const TIER_CHUNK_CAP: Record<Exclude<MediaTier, "TX">, number> = {
 };
 
 /**
- * 카드·지정학 키워드 → 영·아랍 등 교차 검색어.
- * 본문에 한국어만 있어도 해외 심층 보도를 잡기 위함.
+ * 한국어·약어 → 영문 검색어.
+ * 카드 주장 문장 전체가 아니라 이 별칭으로 뒤진다.
  */
 const TERM_ALIASES: Record<string, string[]> = {
-  후티: ["Houthi", "Ansar Allah", "Huthi"],
-  후티반군: ["Houthi rebels", "Ansar Allah"],
-  예멘: ["Yemen", "Yemeni"],
+  후티: ["Houthi", "Ansar Allah"],
+  후티반군: ["Houthi rebels"],
+  예멘: ["Yemen"],
   사우디: ["Saudi Arabia", "Saudi"],
-  홍해: ["Red Sea", "Bab el-Mandeb"],
-  바브엘만데브: ["Bab el-Mandeb", "Bab al-Mandab"],
+  홍해: ["Red Sea"],
+  바브엘만데브: ["Bab el-Mandeb"],
   페림: ["Perim Island", "Mayyun"],
+  마윤: ["Mayyun", "Perim"],
   모카: ["Mocha Yemen", "Mokha"],
-  호르무즈: ["Strait of Hormuz", "Hormuz Strait"],
-  이란: ["Iran", "Islamic Republic of Iran"],
-  이스라엘: ["Israel", "IDF"],
-  가자: ["Gaza", "Gaza Strip"],
-  레바논: ["Lebanon", "Hezbollah"],
-  헤즈볼라: ["Hezbollah", "Hizballah"],
-  우크라이나: ["Ukraine", "Ukrainian"],
-  러시아: ["Russia", "Russian"],
-  북한: ["North Korea", "DPRK", "Kim Jong Un"],
-  중국: ["China", "Beijing", "PLA"],
-  대만: ["Taiwan", "Taiwan Strait"],
-  남중국해: ["South China Sea"],
+  타이즈: ["Taiz Yemen"],
+  마리브: ["Marib"],
+  호데이다: ["Hodeidah", "Hudaydah"],
+  호르무즈: ["Strait of Hormuz"],
+  이란: ["Iran"],
+  이스라엘: ["Israel"],
+  가자: ["Gaza"],
+  레바논: ["Lebanon"],
+  헤즈볼라: ["Hezbollah"],
+  우크라이나: ["Ukraine"],
+  러시아: ["Russia"],
+  북한: ["North Korea", "DPRK"],
+  중국: ["China"],
+  대만: ["Taiwan"],
   나타즈: ["Natanz"],
-  포르도: ["Fordow", "Fordo"],
+  포르도: ["Fordow"],
   이스파한: ["Isfahan"],
-  부셰흐르: ["Bushehr"],
-  샤헤드: ["Shahed drone", "Shahed-136"],
-  게란: ["Geran-2", "Geran drone"],
+  샤헤드: ["Shahed drone", "Shahed"],
+  게란: ["Geran drone", "Geran-2"],
   옐라부가: ["Yelabuga", "Alabuga"],
   크림: ["Crimea"],
-  돈바스: ["Donbas", "Donbass"],
-  흑해: ["Black Sea"],
-  수에즈: ["Suez Canal"],
-  말라카: ["Strait of Malacca", "Malacca Strait"],
-  대만해협: ["Taiwan Strait"],
-  원유: ["crude oil", "oil price"],
-  금값: ["gold price", "bullion"],
-  달러: ["US dollar", "DXY"],
+  페오도시야: ["Feodosia"],
+  카스피해: ["Caspian Sea"],
+  아미라바드: ["Amirabad"],
+  안잘리: ["Anzali", "Bandar Anzali"],
+  반다르안잘리: ["Bandar Anzali"],
+  아스트라한: ["Astrakhan"],
+  볼가: ["Volga"],
+  키이우: ["Kyiv"],
+  하르키우: ["Kharkiv"],
+  정유: ["oil refinery"],
+  드론: ["drone"],
+  미사일: ["missile"],
+  나포: ["tanker seizure"],
+  마리네라: ["Marinera tanker", "Bella 1 tanker"],
+  그림자: ["shadow fleet"],
+  함대: ["shadow fleet"],
+  티팟: ["teapot refinery", "Shandong refinery"],
+  산둥: ["Shandong China oil"],
+  송유관: ["oil pipeline Saudi"],
+  동서: ["East West Pipeline Saudi"],
+  쇄빙: ["icebreaker Arctic"],
+  북동항로: ["Northern Sea Route", "NSR Arctic"],
+  그린란드: ["Greenland"],
+  희토류: ["rare earth"],
+  수출통제: ["export control China"],
+  남오세티아: ["South Ossetia MRB"],
+  루블: ["ruble banking North Korea"],
+  파병: ["North Korea troops Russia"],
+  노동자: ["North Korean workers Russia"],
+  조약: ["North Korea Russia treaty"],
+  방공: ["air defense North Korea"],
+  부품: ["drone components China"],
+  영국해협: ["English Channel tanker"],
+  유조선: ["oil tanker"],
+  핵: ["nuclear Iran"],
+  재보급: ["Iran Russia resupply"],
+  INSTC: ["INSTC corridor", "International North South Transport Corridor"],
+  NSR: ["Northern Sea Route"],
+  MRB: ["MRB bank South Ossetia"],
+  MSMT: ["North Korea Russia military"],
+  KN: ["KN-23 missile"],
+  TNT: ["munitions Caspian"],
+  HESA: ["HESA Isfahan"],
+  Bella: ["Bella 1 tanker", "Marinera"],
+  Anna: ["Iran ship Caspian Anna"],
 };
 
-/** 뉴스/주장 텍스트에서 RSS 검색어를 짧게 뽑는다. */
+/** @deprecated 호환용 — 영문 쿼리 빌더 사용 */
 export function buildSearchQuery(text: string, maxLen = 110): string {
-  const cleaned = text
-    .replace(/[→←↔⇒⇐]/g, " ")
-    .replace(/["""'']/g, "")
-    .replace(/[·•|/\\]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const qs = buildEnglishQueries(text);
+  return (qs[0] || text).slice(0, maxLen).trim();
+}
 
-  const firstSentence =
-    cleaned.split(/(?<=[.!?。])\s+|:\s+/)[0] || cleaned;
-  return firstSentence.slice(0, maxLen).trim();
+/** @deprecated */
+export function buildSearchQueries(text: string): string[] {
+  return buildEnglishQueries(text);
 }
 
 /**
- * 같은 본문으로 여러 검색어를 만든다.
- * 첫 문장 → 키워드 → 영문 별칭 → 짧은 핵심어 순으로 넓혀 빈·얕은 결과를 줄인다.
+ * 카드·주장 텍스트 → 짧은 영문 검색어 목록 (넓은 것 → 좁은 것).
  */
-export function buildSearchQueries(text: string): string[] {
-  const primary = buildSearchQuery(text);
+export function buildEnglishQueries(text: string): string[] {
   const tokens = extractKeywords(text);
-  const keywordQuery = tokens.slice(0, 8).join(" ");
-  const shortQuery = tokens.slice(0, 4).join(" ");
-  const aliasQueries = expandAliasQueries(text, tokens);
+  const enTerms = collectEnglishTerms(text, tokens);
 
   const out: string[] = [];
-  for (const q of [primary, keywordQuery, ...aliasQueries, shortQuery]) {
-    const t = q.trim();
-    if (t.length >= 2 && !out.includes(t)) out.push(t);
+  const push = (q: string) => {
+    const t = q.replace(/\s+/g, " ").trim();
+    if (t.length < 2) return;
+    if (!out.some((u) => u.toLowerCase() === t.toLowerCase())) out.push(t);
+  };
+
+  // 넓은 조합 → 짧은 단어 (폴백용)
+  if (enTerms.length >= 2) push(enTerms.slice(0, 4).join(" "));
+  if (enTerms.length >= 2) push(enTerms.slice(0, 2).join(" "));
+  for (const t of enTerms.slice(0, 6)) push(t);
+
+  // 본문에 이미 있는 영문 토큰 (INSTC, NSR…)
+  for (const t of tokens) {
+    if (/^[A-Za-z][A-Za-z0-9.\-]{1,24}$/.test(t)) push(t);
   }
-  return out.length ? out : [primary || text.slice(0, 40)].filter(Boolean);
+
+  if (!out.length) {
+    push("geopolitics conflict");
+    push("international news");
+  }
+  return out;
 }
 
-function expandAliasQueries(text: string, tokens: string[]): string[] {
-  const lower = text.toLowerCase();
-  const enTerms: string[] = [];
-  for (const [ko, enList] of Object.entries(TERM_ALIASES)) {
-    if (lower.includes(ko.toLowerCase()) || tokens.some((t) => t.includes(ko))) {
-      enTerms.push(...enList.slice(0, 2));
+function collectEnglishTerms(text: string, tokens: string[]): string[] {
+  const hay = text.toLowerCase();
+  const found: string[] = [];
+
+  // 긴 키부터 매칭 (바브엘만데브 > 만데브)
+  const keys = Object.keys(TERM_ALIASES).sort((a, b) => b.length - a.length);
+  for (const ko of keys) {
+    const hit =
+      hay.includes(ko.toLowerCase()) ||
+      tokens.some(
+        (t) =>
+          t.toLowerCase().includes(ko.toLowerCase()) ||
+          ko.toLowerCase().includes(t.toLowerCase()),
+      );
+    if (!hit) continue;
+    for (const en of TERM_ALIASES[ko].slice(0, 2)) {
+      if (!found.some((f) => f.toLowerCase() === en.toLowerCase())) {
+        found.push(en);
+      }
     }
   }
-  const uniqEn: string[] = [];
-  for (const t of enTerms) {
-    if (!uniqEn.some((u) => u.toLowerCase() === t.toLowerCase())) uniqEn.push(t);
-  }
-  if (!uniqEn.length) return [];
 
-  const queries: string[] = [];
-  // 핵심 영문 묶음 (최대 2개 쿼리)
-  queries.push(uniqEn.slice(0, 4).join(" "));
-  if (uniqEn.length > 4) {
-    queries.push(uniqEn.slice(4, 8).join(" "));
+  for (const t of tokens) {
+    if (/^[A-Za-z][A-Za-z0-9.\-]{1,24}$/.test(t)) {
+      if (!found.some((f) => f.toLowerCase() === t.toLowerCase())) {
+        found.push(t);
+      }
+    }
   }
-  // 단일 고유명사 심층 (따옴표로 정확 매칭)
-  for (const t of uniqEn.slice(0, 3)) {
-    if (t.includes(" ")) queries.push(`"${t}"`);
-  }
-  return queries;
+  return found;
 }
 
 function extractKeywords(text: string): string[] {
@@ -180,6 +232,12 @@ function extractKeywords(text: string): string[] {
     "따르면",
     "것이다",
     "것이",
+    "보도",
+    "주장",
+    "분석",
+    "등",
+    "쪽",
+    "측",
     "the",
     "and",
     "for",
@@ -201,7 +259,7 @@ function extractKeywords(text: string): string[] {
   const scored = parts
     .map((p) => p.trim())
     .filter((p) => p.length >= 2 && !stop.has(p.toLowerCase()))
-    .filter((p) => !/^(은|는|이|가|을|를|의|와|과|도|만|까지|부터)$/.test(p));
+    .filter((p) => !/^(은|는|이|가|을|를|의|와|과|도|만|까지|부터|년|월|일)$/.test(p));
 
   const uniq: string[] = [];
   for (const p of scored) {
@@ -210,7 +268,7 @@ function extractKeywords(text: string): string[] {
   return uniq;
 }
 
-/** @deprecated 티어 검색 사용. 호환용으로 남김. */
+/** @deprecated */
 export async function fetchGoogleNewsRss(
   query: string,
   limit = 12,
@@ -220,74 +278,100 @@ export async function fetchGoogleNewsRss(
 }
 
 /**
- * T1~T4 매체 도메인(site:) + 다국어·다검색어로 긁고,
- * 티어 균형을 맞춰 돌려준다. 티어는 절대 바꾸지 않는다.
+ * 영문 검색어로 RSS를 긁고, 비면 단계적으로 넓힌 뒤
+ * 제목을 한글로 번역해 돌려준다.
  */
 export async function fetchRelatedNews(
   text: string,
-  limit = 28,
+  limit = 24,
 ): Promise<{ query: string; items: GoogleNewsItem[] }> {
-  const queries = buildSearchQueries(text);
-  const topic = queries[0] || text.slice(0, 80).trim();
+  const queries = buildEnglishQueries(text);
+  const topic = queries[0] || "geopolitics";
   if (!topic) return { query: "", items: [] };
 
-  const jobs: Promise<Omit<GoogleNewsItem, "url">[]>[] = [];
-  const pushJob = (base: string, q: string, n: number, tag: string) => {
-    jobs.push(
-      fetchOneFeedRaw(base, q, n).catch((err) => {
-        console.warn(`[google-news] ${tag}`, err);
-        return [];
-      }),
+  let raw: Omit<GoogleNewsItem, "url">[] = [];
+
+  // 1) 열린 영문 검색 (when 없음) — 가장 잘 붙음
+  raw = await mergeRaw(
+    raw,
+    runJobs(
+      queries.slice(0, 4).flatMap((q) => [
+        { base: FEED.en, q, n: 10, tag: `open-en/${q.slice(0, 24)}` },
+      ]),
+    ),
+  );
+
+  // 2) 결과 부족하면 site: T1~T4 (영문 색인)
+  if (raw.length < 10) {
+    const siteJobs: FeedJob[] = [];
+    for (const tier of TIER_ORDER) {
+      const chunks = siteQueryChunks(tier, 5).slice(0, TIER_CHUNK_CAP[tier]);
+      for (const sitePart of chunks) {
+        for (const win of TIER_WINDOWS[tier]) {
+          siteJobs.push({
+            base: FEED[win],
+            q: `${topic} ${sitePart}`,
+            n: 8,
+            tag: `site-${tier}/${win}`,
+          });
+        }
+      }
+    }
+    raw = await mergeRaw(raw, runJobs(siteJobs));
+  }
+
+  // 3) 다른 로케일에 같은 영문 쿼리
+  if (raw.length < 8) {
+    const locales: FeedKey[] = ["de", "ko", "ar", "ru", "zh"];
+    raw = await mergeRaw(
+      raw,
+      runJobs(
+        queries.slice(0, 2).flatMap((q) =>
+          locales.map((win) => ({
+            base: FEED[win],
+            q,
+            n: 6,
+            tag: `locale/${win}`,
+          })),
+        ),
+      ),
     );
-  };
+  }
 
-  // 1) 티어별 site: + when:30d — 최근 한 달 심층 보도
-  const enAlias = queries.find((q) => /^[A-Za-z"']/.test(q.trim())) || null;
-
-  for (const tier of TIER_ORDER) {
-    const chunks = siteQueryChunks(tier, 5).slice(0, TIER_CHUNK_CAP[tier]);
-    for (const sitePart of chunks) {
-      for (const win of TIER_WINDOWS[tier]) {
-        pushJob(
-          FEED[win],
-          `${topic} ${sitePart} when:30d`,
-          10,
-          `${tier}/${win}`,
-        );
-      }
-      // T1·T4는 영문 별칭으로 한 번 더 (해외·관영 심층)
-      if (enAlias && (tier === "T1" || tier === "T4")) {
-        pushJob(
-          FEED.en,
-          `${enAlias} ${sitePart} when:30d`,
-          10,
-          `${tier}/en-alias`,
-        );
-      }
+  // 4) 한 단어씩 폴백
+  if (raw.length < 6) {
+    for (const q of queries) {
+      if (raw.length >= 12) break;
+      raw = await mergeRaw(
+        raw,
+        runJobs([{ base: FEED.en, q, n: 10, tag: `word/${q.slice(0, 20)}` }]),
+      );
     }
   }
 
-  // 2) 열린 검색 — 검색어 변형 × 로케일 (지역·TX 보완)
-  const openWindows: FeedKey[] = ["en", "ko", "zh", "ru", "ar", "de"];
-  for (const q of queries.slice(0, 2)) {
-    for (const win of openWindows) {
-      pushJob(FEED[win], `${q} when:30d`, 6, `open/${win}`);
+  // 5) 최후 — 그래도 비면 넓은 영문 주제
+  if (raw.length === 0) {
+    const resorts = [
+      topic,
+      ...queries.slice(0, 3),
+      "Middle East conflict",
+      "Ukraine Russia war",
+      "Red Sea shipping",
+    ];
+    for (const q of resorts) {
+      raw = await mergeRaw(
+        raw,
+        runJobs([{ base: FEED.en, q, n: 12, tag: `last/${q.slice(0, 20)}` }]),
+      );
+      if (raw.length >= 6) break;
     }
   }
 
-  // 3) 단기 속보 (when:7d)
-  for (const win of ["en", "ko"] as const) {
-    pushJob(FEED[win], `${topic} when:7d`, 8, `flash/${win}`);
-  }
+  raw = sortByPublishedDesc(raw).slice(0, 48);
 
-  const batches = await Promise.all(jobs);
-  let raw = dedupeRaw(batches.flat());
-  raw = sortByPublishedDesc(raw).slice(0, 56);
-
-  // 상위는 HTTP follow로 원문, 나머지는 빠른 해석
   const resolved = await mapPool(raw, 10, async (item, index) => {
     const real =
-      index < 28
+      index < 24
         ? await resolvePublisherUrlDeep(item.link)
         : await resolvePublisherUrlFast(item.link);
     const url = real || item.link;
@@ -300,11 +384,46 @@ export async function fetchRelatedNews(
     };
   });
 
-  const balanced = balanceByTier(resolved, limit);
+  let balanced = balanceByTier(resolved, limit);
+
+  // 제목 한글 번역 (실패 시 원문 유지)
+  const originals = balanced.map((i) => i.title);
+  const translated = await translateTitlesToKorean(originals).catch(() => originals);
+  balanced = balanced.map((item, i) => ({
+    ...item,
+    titleOriginal: originals[i],
+    title: translated[i]?.trim() || originals[i],
+  }));
+
   return { query: topic, items: balanced };
 }
 
-/** 티어별 균등 배분. T4도 반드시 자리 확보. TX는 남는 칸만. */
+type FeedJob = { base: string; q: string; n: number; tag: string };
+
+async function runJobs(
+  jobs: FeedJob[],
+): Promise<Omit<GoogleNewsItem, "url">[]> {
+  if (!jobs.length) return [];
+  const batches = await Promise.all(
+    jobs.map(({ base, q, n, tag }) =>
+      fetchOneFeedRaw(base, q, n).catch((err) => {
+        console.warn(`[google-news] ${tag}`, err);
+        return [] as Omit<GoogleNewsItem, "url">[];
+      }),
+    ),
+  );
+  return batches.flat();
+}
+
+async function mergeRaw(
+  prev: Omit<GoogleNewsItem, "url">[],
+  next: Promise<Omit<GoogleNewsItem, "url">[]> | Omit<GoogleNewsItem, "url">[],
+): Promise<Omit<GoogleNewsItem, "url">[]> {
+  const added = await next;
+  return dedupeRaw([...prev, ...added]);
+}
+
+/** 티어 균형. 비면 TX로라도 채움 → 빈 목록 최소화 */
 function balanceByTier(
   items: GoogleNewsItem[],
   limit: number,
@@ -321,12 +440,11 @@ function balanceByTier(
     buckets[t]?.push(item);
   }
 
-  // 티어 안에서 최신 보도 우선
   for (const t of Object.keys(buckets) as MediaTier[]) {
     buckets[t] = sortByPublishedDesc(buckets[t]);
   }
 
-  const perCore = Math.max(3, Math.floor(limit / 4));
+  const perCore = Math.max(2, Math.floor(limit / 4));
   const out: GoogleNewsItem[] = [];
   const used = new Set<string>();
 
@@ -349,8 +467,13 @@ function balanceByTier(
     if (out.length >= limit) break;
     take(buckets[tier], limit - out.length);
   }
+  // TX로 나머지 전부 채움 (빈 결과 방지)
   if (out.length < limit) {
-    take(buckets.TX, Math.min(4, limit - out.length));
+    take(buckets.TX, limit - out.length);
+  }
+  // 그래도 부족하면 티어 무시하고 전체에서
+  if (out.length < Math.min(6, limit)) {
+    take(sortByPublishedDesc(items), limit - out.length);
   }
 
   const rank: Record<string, number> = {
@@ -390,12 +513,15 @@ async function mapPool<T, R>(
 ): Promise<R[]> {
   const out: R[] = new Array(items.length);
   let next = 0;
-  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
-    while (next < items.length) {
-      const i = next++;
-      out[i] = await fn(items[i], i);
-    }
-  });
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length || 1) },
+    async () => {
+      while (next < items.length) {
+        const i = next++;
+        out[i] = await fn(items[i], i);
+      }
+    },
+  );
   await Promise.all(workers);
   return out;
 }
@@ -409,7 +535,7 @@ async function fetchOneFeedRaw(
   const res = await fetch(url, {
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (compatible; news-context/0.4; +https://localhost)",
+        "Mozilla/5.0 (compatible; news-context/0.5; +https://localhost)",
       Accept: "application/rss+xml, application/xml, text/xml, */*",
     },
     next: { revalidate: 120 },
@@ -487,7 +613,6 @@ function extractHttpFromHtml(html: string): string | null {
   return null;
 }
 
-/** 빠른 경로 후, 구글 링크면 HTTP follow로 원문 확보 */
 async function resolvePublisherUrlDeep(
   googleLink: string,
 ): Promise<string | null> {
@@ -499,7 +624,6 @@ async function resolvePublisherUrlDeep(
   return resolvePublisherUrl(googleLink);
 }
 
-/** 빠른 경로: 파라미터·article id만. HTTP follow 없음. */
 async function resolvePublisherUrlFast(
   googleLink: string,
 ): Promise<string | null> {
@@ -523,7 +647,6 @@ async function resolvePublisherUrlFast(
   return tryDecodeGoogleArticleId(googleLink) || googleLink;
 }
 
-/** Google News 리다이렉트/파라미터에서 원문 URL을 뽑거나, 짧게 follow 한다. */
 export async function resolvePublisherUrl(
   googleLink: string,
 ): Promise<string | null> {
@@ -535,7 +658,7 @@ export async function resolvePublisherUrl(
 
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2800);
+    const timer = setTimeout(() => controller.abort(), 2500);
     const articleUrl = googleLink
       .replace("/rss/articles/", "/articles/")
       .replace("/rss/search?", "/search?");
@@ -592,7 +715,6 @@ export async function resolvePublisherUrl(
   return googleLink;
 }
 
-/** Google News article id(CBMi…) 안에 박힌 http URL을 느슨하게 추출 */
 function tryDecodeGoogleArticleId(googleLink: string): string | null {
   try {
     const m = googleLink.match(/articles\/([A-Za-z0-9_\-]+)/);

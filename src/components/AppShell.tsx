@@ -3,12 +3,14 @@
 import { Component, useCallback, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { cards, getCardById } from "@/data/cards";
-import type { AnalysisResult, Claim, NetworkCard } from "@/types";
+import type { Claim, NetworkCard } from "@/types";
 import SidePanel, { type PanelLevel } from "@/components/SidePanel";
 
 const GlobeView = dynamic(() => import("@/components/GlobeView"), {
   ssr: false,
-  loading: () => <div className="globe-placeholder">인텔 맵을 그리는 중이에요…</div>,
+  loading: () => (
+    <div className="globe-placeholder">인텔 맵을 그리는 중이에요…</div>
+  ),
 });
 
 class GlobeErrorBoundary extends Component<
@@ -38,10 +40,6 @@ export default function AppShell() {
   const [level, setLevel] = useState<PanelLevel>("L0");
   const [activeCard, setActiveCard] = useState<NetworkCard | null>(null);
   const [activeClaim, setActiveClaim] = useState<Claim | null>(null);
-  const [newsText, setNewsText] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
 
   const selectCard = useCallback((card: NetworkCard) => {
     setActiveCard(card);
@@ -73,40 +71,6 @@ export default function AppShell() {
     }
   }, [level]);
 
-  const analyze = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: newsText }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "요청에 실패했습니다.");
-        setAnalysis(null);
-        return;
-      }
-      setAnalysis(data.analysis);
-      const firstMatch = data.analysis?.networkPositions?.find(
-        (p: { cardId: string | null }) => p.cardId,
-      );
-      if (firstMatch?.cardId) {
-        const card = getCardById(firstMatch.cardId);
-        if (card) {
-          setActiveCard(card);
-          setActiveClaim(null);
-          setLevel("L1");
-        }
-      }
-    } catch {
-      setError("네트워크 오류가 났습니다. 다시 시도해 주세요.");
-    } finally {
-      setLoading(false);
-    }
-  }, [newsText]);
-
   return (
     <div className="shell intel-on">
       <div className="globe-pane">
@@ -124,18 +88,11 @@ export default function AppShell() {
         level={level}
         activeCard={activeCard}
         activeClaim={activeClaim}
-        analysis={analysis}
-        newsText={newsText}
-        loading={loading}
-        error={error}
-        onNewsChange={setNewsText}
-        onAnalyze={analyze}
         onSelectCard={selectCard}
         onSelectClaim={selectClaim}
         onSetLevel={setLevel}
         onBack={back}
         onGoRelated={goRelated}
-        onClearAnalysis={() => setAnalysis(null)}
       />
     </div>
   );

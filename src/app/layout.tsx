@@ -18,7 +18,7 @@ const body = Noto_Sans_KR({
 export const metadata: Metadata = {
   title: "뉴스 뒷맥락",
   description:
-    "뉴스 텍스트를 붙여넣으면 사건의 배경을 4단으로 풀고, 지정학 네트워크 속 위치를 보여줍니다.",
+    "실측·공개 자료로 지정학 네트워크와 FRED 지표, 전쟁·초크포인트를 보여주는 맵입니다.",
 };
 
 export default function RootLayout({

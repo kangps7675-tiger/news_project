@@ -1154,12 +1154,6 @@ textarea:focus {
   padding: 1px 4px;
 }
 
-@media (max-width: 900px) {
-  .tier-ladder {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 .tag {
   display: inline-block;
   font-size: 0.68rem;
@@ -1494,6 +1488,18 @@ textarea:focus {
   font-variant-numeric: tabular-nums;
 }
 
+/* —— 반응형 —— */
+@media (max-width: 1100px) {
+  .panel {
+    max-width: 400px;
+    min-width: 280px;
+  }
+
+  .brand-name {
+    font-size: 1.28rem;
+  }
+}
+
 @media (max-width: 900px) {
   .shell {
     flex-direction: column;
@@ -1506,15 +1512,227 @@ textarea:focus {
     flex: none;
     width: 100%;
     height: 42vh;
-    min-height: 280px;
+    min-height: 260px;
+    max-height: 420px;
   }
 
   .panel {
     flex: none;
     max-width: none;
     min-width: 0;
+    width: 100%;
     height: auto;
     border-left: none;
     border-top: 1px solid var(--edge);
+    box-shadow: none;
+  }
+
+  .panel-body {
+    overflow: visible;
+  }
+
+  .globe-legend {
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    max-width: calc(100% - 1rem);
+    gap: 0.3rem 0.55rem;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.65rem;
+  }
+
+  .yemen-expand-hud {
+    right: 0.5rem;
+    bottom: auto;
+    top: 0.5rem;
+    font-size: 0.65rem;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .tier-ladder {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .level-nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .level-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .level-btn {
+    flex: 1 0 auto;
+    min-width: 4.2rem;
+    font-size: 0.72rem;
+    padding: 0.5rem 0.35rem;
+  }
+
+  .asset-move-top {
+    flex-wrap: wrap;
+  }
+
+  .sparkline {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  :root {
+    --panel-pad-x: 0.9rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+  }
+
+  .globe-pane {
+    height: 38vh;
+    min-height: 220px;
+  }
+
+  .panel-head {
+    padding: 0.85rem var(--panel-pad-x) 0.65rem;
+    gap: var(--space-2);
+  }
+
+  .brand-name {
+    font-size: 1.15rem;
+  }
+
+  .brand-sub {
+    font-size: 0.76rem;
+  }
+
+  .tier-ladder {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem;
+  }
+
+  .tier-step {
+    min-height: 3.6rem;
+    padding: 0.35rem 0.35rem 0.4rem;
+  }
+
+  .tier-step-code {
+    font-size: 0.95rem;
+  }
+
+  .tier-step-name {
+    font-size: 0.64rem;
+  }
+
+  .card-btn {
+    padding: 0.7rem 0.75rem;
+  }
+
+  .card-title {
+    font-size: 0.95rem;
+  }
+
+  .card-sum {
+    font-size: 0.78rem;
+  }
+
+  .four-sections p,
+  .four-sections li {
+    font-size: 0.86rem;
+  }
+
+  .claim-btn {
+    padding: 0.65rem 0.7rem;
+  }
+
+  .market-chip-row {
+    flex-direction: column;
+  }
+
+  .market-row-main {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .row.between {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .btn-primary,
+  .btn-ghost {
+    min-height: 2.5rem;
+  }
+
+  .btn-primary.wide,
+  .btn-ghost.wide {
+    width: 100%;
+  }
+
+  .news-url-list .rss-url {
+    font-size: 0.62rem;
+  }
+
+  .globe-html-label,
+  .globe-yemen-label,
+  .globe-occupied-label {
+    font-size: 9px;
+    padding: 1px 5px;
+  }
+
+  .globe-strike .strike-flame {
+    width: 12px;
+    height: 15px;
+  }
+
+  .disclaimer {
+    font-size: 0.7rem;
+    padding: 0.75rem var(--panel-pad-x);
+  }
+}
+
+@media (max-width: 400px) {
+  .globe-pane {
+    height: 34vh;
+    min-height: 200px;
+  }
+
+  .tier-ladder {
+    grid-template-columns: 1fr;
+  }
+
+  .level-btn {
+    font-size: 0.68rem;
+    min-width: 3.6rem;
+  }
+
+  .globe-legend {
+    display: none;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .shell {
+    flex-direction: row;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .globe-pane {
+    flex: 1 1 55%;
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+  }
+
+  .panel {
+    flex: 1 1 45%;
+    height: 100%;
+    max-width: none;
+    border-top: none;
+    border-left: 1px solid var(--edge);
+    overflow: hidden;
+  }
+
+  .panel-body {
+    overflow-y: auto;
   }
 }

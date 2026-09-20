@@ -7,13 +7,11 @@ import { CARD_COUNTRIES } from "@/data/marketLayers";
 
 const Globe = dynamic(() => import("react-globe.gl"), {
   ssr: false,
-  loading: () => <div className="globe-placeholder">지구본 그리는 중…</div>,
+  loading: () => (
+    <div className="globe-placeholder">벡터 지도를 그리는 중이에요…</div>
+  ),
 });
 
-const EARTH =
-  "https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg";
-const TOPO =
-  "https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png";
 const COUNTRIES_URL =
   "https://raw.githubusercontent.com/vasturiano/react-globe.gl/master/example/datasets/ne_110m_admin_0_countries.geojson";
 
@@ -62,23 +60,23 @@ type CountryFeat = {
 };
 
 function tagColor(tag: ConfirmationTag | "focus", active: boolean): string {
-  const alpha = active ? 1 : 0.35;
+  const alpha = active ? 1 : 0.4;
   switch (tag) {
     case "확립":
-      return `rgba(201, 140, 40, ${alpha})`;
+      return `rgba(122, 72, 28, ${alpha})`;
     case "보도":
-      return `rgba(50, 120, 180, ${0.85 * alpha})`;
+      return `rgba(90, 70, 45, ${0.9 * alpha})`;
     case "당사자 주장":
-      return `rgba(200, 100, 60, ${0.8 * alpha})`;
+      return `rgba(150, 70, 40, ${0.85 * alpha})`;
     case "추정":
     case "분석":
-      return `rgba(70, 140, 160, ${0.7 * alpha})`;
+      return `rgba(110, 95, 70, ${0.75 * alpha})`;
     case "정황":
-      return `rgba(120, 120, 130, ${0.6 * alpha})`;
+      return `rgba(130, 120, 100, ${0.65 * alpha})`;
     case "focus":
-      return `rgba(40, 110, 170, 0.65)`;
+      return `rgba(100, 70, 35, 0.7)`;
     default:
-      return `rgba(80, 80, 90, ${alpha})`;
+      return `rgba(90, 70, 50, ${alpha})`;
   }
 }
 
@@ -110,9 +108,7 @@ export default function GlobeView({
       .then((geo) => {
         if (!cancelled) setCountries(geo.features || []);
       })
-      .catch(() => {
-        /* ignore — globe still works without borders */
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -142,15 +138,31 @@ export default function GlobeView({
     };
   }, []);
 
-  // 블록처럼 위로 솟아오르는 애니메이션
+  // 벡터 구면: 사진 텍스처 없이 단색 + 국경 폴리곤만
   useEffect(() => {
-    setRise(0.008);
+    const g = globeRef.current;
+    if (!g || size.w === 0) return;
+    try {
+      const mat = g.globeMaterial();
+      if (mat) {
+        mat.color?.set?.("#d7c4a0");
+        if (mat.emissive?.set) mat.emissive.set("#c4ae86");
+        mat.emissiveIntensity = 0.12;
+        mat.shininess = 4;
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [size.w, size.h, countries.length]);
+
+  useEffect(() => {
+    setRise(0.006);
     let frame = 0;
     const start = performance.now();
     const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / 900);
+      const t = Math.min(1, (now - start) / 950);
       const eased = 1 - Math.pow(1 - t, 3);
-      setRise(0.008 + eased * 0.085);
+      setRise(0.006 + eased * 0.09);
       if (t < 1) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
@@ -158,9 +170,7 @@ export default function GlobeView({
   }, [activeCard?.id, activeClaim?.id]);
 
   const activeCountryNames = useMemo(() => {
-    if (!activeCard) {
-      return Object.values(CARD_COUNTRIES).flat();
-    }
+    if (!activeCard) return Object.values(CARD_COUNTRIES).flat();
     return CARD_COUNTRIES[activeCard.id] || [];
   }, [activeCard]);
 
@@ -187,8 +197,8 @@ export default function GlobeView({
             label: p.label,
             tag: "focus",
             active: true,
-            size: 0.5,
-            alt: 0.04,
+            size: 0.45,
+            alt: 0.05,
           });
         }
       }
@@ -204,8 +214,8 @@ export default function GlobeView({
           label: p.label,
           tag: "확립",
           active: true,
-          size: 0.7,
-          alt: 0.06,
+          size: 0.65,
+          alt: 0.07,
         });
       }
     }
@@ -219,8 +229,8 @@ export default function GlobeView({
             label: layer.label,
             tag: layer.tag,
             active: true,
-            size: 0.7,
-            alt: 0.07,
+            size: 0.65,
+            alt: 0.08,
           });
         } else if (layer.type === "arc" && layer.from && layer.to) {
           arcs.push({
@@ -232,7 +242,7 @@ export default function GlobeView({
             tag: layer.tag,
             active: true,
             dash: layer.tag !== "확립" && layer.tag !== "보도",
-            alt: 0.28,
+            alt: 0.3,
           });
         } else if (layer.type === "line" && layer.path && layer.path.length > 1) {
           for (let i = 0; i < layer.path.length - 1; i++) {
@@ -247,7 +257,7 @@ export default function GlobeView({
               tag: layer.tag,
               active: true,
               dash: layer.tag !== "확립" && layer.tag !== "보도",
-              alt: 0.22,
+              alt: 0.24,
             });
           }
         }
@@ -266,8 +276,8 @@ export default function GlobeView({
           label: c.title,
           tag: c.tag,
           active: true,
-          size: 0.55,
-          alt: 0.08,
+          size: 0.5,
+          alt: 0.09,
         });
       }
     }
@@ -282,8 +292,8 @@ export default function GlobeView({
             label: p.label,
             tag: "focus",
             active: false,
-            size: 0.25,
-            alt: 0.01,
+            size: 0.22,
+            alt: 0.015,
           });
         }
       }
@@ -311,37 +321,40 @@ export default function GlobeView({
   return (
     <div className="globe-wrap" ref={wrapRef}>
       {!ready && (
-        <div className="globe-placeholder">
-          지구본을 크게 그리는 중이에요…
-        </div>
+        <div className="globe-placeholder">벡터 지도를 펼치는 중이에요…</div>
       )}
       {ready && (
         <Globe
           ref={globeRef}
           width={size.w}
           height={size.h}
-          globeImageUrl={EARTH}
-          bumpImageUrl={TOPO}
-          backgroundColor="#d8e6f2"
+          globeImageUrl={undefined}
+          bumpImageUrl={undefined}
+          backgroundColor="#ebe0c8"
           showAtmosphere
-          atmosphereColor="#7eb6e8"
-          atmosphereAltitude={0.16}
+          atmosphereColor="#c9b896"
+          atmosphereAltitude={0.14}
           polygonsData={polygonData}
           polygonAltitude={(d: object) =>
-            (d as CountryFeat).__active ? rise : 0.003
+            (d as CountryFeat).__active ? rise : 0.004
           }
           polygonCapColor={(d: object) =>
             (d as CountryFeat).__active
-              ? "rgba(232, 170, 70, 0.72)"
-              : "rgba(180, 200, 210, 0.12)"
+              ? "rgba(176, 120, 56, 0.88)"
+              : "rgba(232, 214, 178, 0.92)"
           }
           polygonSideColor={(d: object) =>
             (d as CountryFeat).__active
-              ? "rgba(180, 120, 40, 0.85)"
-              : "rgba(140, 160, 170, 0.15)"
+              ? "rgba(110, 70, 30, 0.95)"
+              : "rgba(160, 135, 95, 0.55)"
           }
-          polygonStrokeColor={() => "rgba(90, 110, 120, 0.35)"}
-          polygonsTransitionDuration={700}
+          polygonStrokeColor={(d: object) =>
+            (d as CountryFeat).__active
+              ? "rgba(70, 42, 18, 0.95)"
+              : "rgba(90, 65, 35, 0.55)"
+          }
+          polygonCapCurvatureResolution={4}
+          polygonsTransitionDuration={750}
           pointsData={points}
           pointLat="lat"
           pointLng="lng"
@@ -358,27 +371,25 @@ export default function GlobeView({
           arcEndLat="endLat"
           arcEndLng="endLng"
           arcAltitude={(d: object) => (d as ArcDatum).alt}
-          arcStroke={1.35}
+          arcStroke={1.45}
           arcColor={(d: object) => {
             const a = d as ArcDatum;
-            return [
-              tagColor(a.tag, a.active),
-              tagColor(a.tag, a.active),
-            ];
+            const c = tagColor(a.tag, a.active);
+            return [c, c];
           }}
-          arcDashLength={(d: object) => ((d as ArcDatum).dash ? 0.4 : 0.85)}
-          arcDashGap={(d: object) => ((d as ArcDatum).dash ? 0.18 : 0.08)}
+          arcDashLength={(d: object) => ((d as ArcDatum).dash ? 0.38 : 0.9)}
+          arcDashGap={(d: object) => ((d as ArcDatum).dash ? 0.16 : 0.06)}
           arcDashAnimateTime={(d: object) =>
-            (d as ArcDatum).dash ? 2800 : 4200
+            (d as ArcDatum).dash ? 2600 : 4000
           }
-          arcLabel={(d: object) => `➡️ ${(d as ArcDatum).label}`}
+          arcLabel={(d: object) => (d as ArcDatum).label}
           labelsData={labels}
           labelLat="lat"
           labelLng="lng"
           labelText="text"
-          labelSize={1.25}
-          labelDotRadius={0.4}
-          labelAltitude={0.09}
+          labelSize={1.2}
+          labelDotRadius={0.35}
+          labelAltitude={0.1}
           labelColor={(d: object) => {
             const l = d as LabelDatum;
             return tagColor(l.tag, l.active);
@@ -386,8 +397,8 @@ export default function GlobeView({
         />
       )}
       <div className="globe-legend" aria-hidden>
-        <span className="lg block">솟은 나라 = 지금 보는 이야기</span>
-        <span className="lg arrow">움직이는 선 = 화살표(흐름)</span>
+        <span className="lg block">솟은 나라 = 지금 이야기</span>
+        <span className="lg arrow">먹선 화살표 = 흐름</span>
       </div>
     </div>
   );

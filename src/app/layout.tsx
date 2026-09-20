@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, Source_Sans_3 } from "next/font/google";
+import { Fraunces, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 
 const display = Fraunces({
@@ -8,7 +8,7 @@ const display = Fraunces({
   display: "swap",
 });
 
-const body = Source_Sans_3({
+const body = Source_Serif_4({
   subsets: ["latin"],
   variable: "--font-source",
   display: "swap",

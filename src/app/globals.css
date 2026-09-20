@@ -151,8 +151,25 @@ textarea {
 }
 
 .lg.fire::before {
-  background: #ff8a3d;
-  border-radius: 1px;
+  width: 0.45rem;
+  height: 0.6rem;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 78%, #fff6c8 0%, transparent 55%),
+    radial-gradient(ellipse 90% 75% at 40% 50%, #ffb020 0%, transparent 60%),
+    radial-gradient(ellipse 80% 90% at 55% 28%, #ff4d1a 0%, transparent 70%);
+  clip-path: polygon(
+    50% 0%,
+    68% 28%,
+    88% 24%,
+    72% 52%,
+    82% 100%,
+    50% 78%,
+    18% 100%,
+    28% 52%,
+    12% 24%,
+    32% 28%
+  );
+  box-shadow: 0 0 5px rgba(255, 90, 30, 0.55);
 }
 
 .lg.occupied::before {
@@ -1087,403 +1104,54 @@ textarea:focus {
   box-shadow: 0 0 12px rgba(255, 50, 40, 0.28);
 }
 
-/* 전장 불 도장 */
-.globe-fire-stamp {
+/* 타격지 — 불 모양 표지 (정적) */
+.globe-strike {
   pointer-events: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  transform: translate(-50%, -85%);
-}
-
-.globe-fire-stamp .flame {
-  width: 18px;
-  height: 22px;
-  background:
-    radial-gradient(ellipse 70% 60% at 50% 80%, #fff6c8 0%, transparent 55%),
-    radial-gradient(ellipse 90% 80% at 40% 55%, #ffb020 0%, transparent 60%),
-    radial-gradient(ellipse 80% 90% at 60% 40%, #ff4d1a 0%, transparent 70%);
-  filter: drop-shadow(0 0 8px rgba(255, 60, 20, 0.85));
-  animation: flame-flicker 0.9s ease-in-out infinite alternate;
-  clip-path: polygon(50% 0%, 70% 35%, 90% 30%, 72% 58%, 85% 100%, 50% 82%, 15% 100%, 28% 58%, 10% 30%, 30% 35%);
-}
-
-.globe-fire-stamp .fire-caption {
-  max-width: 78px;
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 1.15;
-  text-align: center;
-  color: #ffe8d6;
-  background: rgba(40, 10, 8, 0.9);
-  border: 1px solid rgba(255, 90, 40, 0.65);
-  padding: 1px 4px;
-}
-
-@keyframes flame-flicker {
-  from {
-    transform: scale(0.92);
-    opacity: 0.88;
-  }
-  to {
-    transform: scale(1.08);
-    opacity: 1;
-  }
-}
-
-/* 전장·폭격: ①폭발화염+연기 → ②불 혀가 솟음 */
-.globe-blast-stamp {
-  pointer-events: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
   transform: translate(-50%, -78%);
-  filter: drop-shadow(0 2px 3px rgba(20, 8, 0, 0.5));
 }
 
-.globe-blast-stamp .blast-visual {
-  position: relative;
-  width: 40px;
-  height: 48px;
-}
-
-.globe-blast-stamp .smoke {
-  position: absolute;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle at 40% 45%,
-    rgba(90, 90, 95, 0.55) 0%,
-    rgba(55, 55, 60, 0.4) 45%,
-    rgba(30, 30, 35, 0) 72%
-  );
-  animation: smoke-rise 3.6s ease-out infinite;
-}
-
-.globe-blast-stamp .smoke-l {
+.globe-strike .strike-flame {
   width: 16px;
-  height: 16px;
-  left: 0;
-  bottom: 18px;
-  animation-delay: 0s;
-}
-
-.globe-blast-stamp .smoke-c {
-  width: 20px;
   height: 20px;
-  left: 10px;
-  bottom: 22px;
-  animation-delay: 0.35s;
-  opacity: 0.85;
-}
-
-.globe-blast-stamp .smoke-r {
-  width: 14px;
-  height: 14px;
-  right: 0;
-  bottom: 16px;
-  animation-delay: 0.7s;
-}
-
-.globe-blast-stamp .blast-flash {
-  position: absolute;
-  left: 50%;
-  bottom: 2px;
-  width: 30px;
-  height: 24px;
-  transform: translateX(-50%);
   background:
-    radial-gradient(ellipse 80% 70% at 50% 70%, #fff6c8 0%, transparent 55%),
-    radial-gradient(ellipse 90% 80% at 30% 55%, #ffb020 0%, transparent 60%),
-    radial-gradient(ellipse 90% 85% at 70% 50%, #ff5a00 5%, transparent 65%),
-    radial-gradient(ellipse 70% 90% at 50% 35%, #d42000 0%, transparent 70%);
-  clip-path: polygon(
-    48% 0%,
-    58% 14%,
-    78% 8%,
-    70% 28%,
-    96% 36%,
-    72% 48%,
-    88% 68%,
-    62% 62%,
-    54% 100%,
-    46% 100%,
-    38% 62%,
-    12% 68%,
-    28% 48%,
-    4% 36%,
-    30% 28%,
-    22% 8%,
-    42% 14%
-  );
-  animation: blast-burst 3.6s ease-out infinite;
-  transform-origin: 50% 100%;
-}
-
-.globe-blast-stamp .blast-core {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: 14px;
-  height: 10px;
-  transform: translateX(-50%);
-  background: radial-gradient(
-    ellipse at 50% 60%,
-    #fff8d0 0%,
-    #ff9a20 35%,
-    #c43000 70%,
-    transparent 100%
-  );
-  border-radius: 50% 50% 40% 40%;
-  animation: blast-core-fade 3.6s ease-out infinite;
-  transform-origin: 50% 100%;
-}
-
-.globe-blast-stamp .blast-ember {
-  position: absolute;
-  left: 50%;
-  bottom: 8px;
-  width: 3px;
-  height: 3px;
-  margin-left: -1px;
-  border-radius: 50%;
-  background: #ffd080;
-  box-shadow:
-    -8px -6px 0 -0.5px #ff8a30,
-    7px -10px 0 -0.5px #ffb040,
-    3px -14px 0 0 #ff6020,
-    -4px -12px 0 -1px #ffa050;
-  animation: ember-pop 3.6s ease-out infinite;
-}
-
-/* 폭발 이후: 불 혀 */
-.globe-blast-stamp .fire-tongues {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: 28px;
-  height: 34px;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.globe-blast-stamp .tongue {
-  position: absolute;
-  bottom: 0;
-  background:
-    radial-gradient(ellipse 60% 40% at 50% 85%, #fff3a8 0%, transparent 50%),
-    radial-gradient(ellipse 80% 70% at 45% 55%, #ff9a1a 0%, transparent 58%),
-    radial-gradient(ellipse 70% 90% at 55% 30%, #ff3b00 0%, transparent 68%),
-    linear-gradient(180deg, #c41000 0%, #ff5a00 55%, transparent 100%);
-  filter: drop-shadow(0 0 4px rgba(255, 80, 20, 0.75));
-  transform-origin: 50% 100%;
-  opacity: 0;
-  animation: tongue-rise 3.6s ease-in-out infinite;
-}
-
-.globe-blast-stamp .tongue-a {
-  left: 3px;
-  width: 9px;
-  height: 26px;
+    radial-gradient(ellipse 65% 45% at 50% 82%, #fff8d0 0%, transparent 50%),
+    radial-gradient(ellipse 85% 70% at 38% 55%, #ffb020 0%, transparent 58%),
+    radial-gradient(ellipse 75% 85% at 62% 35%, #ff5a14 0%, transparent 65%),
+    linear-gradient(180deg, #ff9a28 0%, #e82800 70%, #9a1000 100%);
   clip-path: polygon(
     50% 0%,
-    72% 22%,
-    88% 40%,
-    70% 58%,
-    82% 100%,
-    50% 78%,
-    18% 100%,
-    30% 58%,
-    12% 40%,
-    28% 22%
+    66% 22%,
+    86% 18%,
+    74% 42%,
+    92% 58%,
+    70% 62%,
+    78% 100%,
+    50% 82%,
+    22% 100%,
+    30% 62%,
+    8% 58%,
+    26% 42%,
+    14% 18%,
+    34% 22%
   );
-  animation-delay: 0s;
+  filter: drop-shadow(0 0 4px rgba(255, 70, 20, 0.7));
 }
 
-.globe-blast-stamp .tongue-b {
-  left: 10px;
-  width: 11px;
-  height: 32px;
-  clip-path: polygon(
-    48% 0%,
-    68% 18%,
-    90% 32%,
-    72% 52%,
-    86% 100%,
-    50% 80%,
-    14% 100%,
-    28% 52%,
-    10% 32%,
-    32% 18%
-  );
-  animation-delay: 0.12s;
-}
-
-.globe-blast-stamp .tongue-c {
-  right: 2px;
-  width: 8px;
-  height: 22px;
-  clip-path: polygon(
-    50% 0%,
-    75% 25%,
-    92% 45%,
-    68% 62%,
-    80% 100%,
-    50% 76%,
-    20% 100%,
-    32% 62%,
-    8% 45%,
-    25% 25%
-  );
-  animation-delay: 0.22s;
-}
-
-.globe-blast-stamp .blast-caption {
-  max-width: 76px;
-  font-size: 9px;
-  font-weight: 800;
+.globe-strike .strike-caption {
+  max-width: 72px;
+  font-size: 8px;
+  font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1.15;
   text-align: center;
   color: #ffe8d6;
-  background: rgba(40, 10, 8, 0.9);
-  border: 1.5px solid rgba(255, 90, 40, 0.65);
-  border-radius: 1px;
+  background: rgba(40, 12, 8, 0.88);
+  border: 1px solid rgba(255, 110, 50, 0.55);
   padding: 1px 4px;
-}
-
-.globe-blast-stamp.intel .blast-flash {
-  filter: saturate(1.2) brightness(1.05);
-}
-
-.globe-blast-stamp.intel .smoke {
-  background: radial-gradient(
-    circle at 40% 45%,
-    rgba(120, 110, 130, 0.55) 0%,
-    rgba(50, 45, 60, 0.4) 45%,
-    rgba(20, 15, 30, 0) 72%
-  );
-}
-
-.globe-blast-stamp.intel .blast-caption {
-  color: #ffe8d6;
-  background: rgba(50, 12, 8, 0.9);
-  border-color: rgba(255, 110, 50, 0.7);
-}
-
-/* 0~28%: 폭발 / 28%~: 불혀 */
-@keyframes blast-burst {
-  0% {
-    transform: translateX(-50%) scale(0.35);
-    opacity: 0;
-  }
-  8% {
-    transform: translateX(-50%) scale(1.25);
-    opacity: 1;
-  }
-  18% {
-    transform: translateX(-50%) scale(1.05);
-    opacity: 0.95;
-  }
-  32% {
-    transform: translateX(-50%) scale(0.7);
-    opacity: 0.15;
-  }
-  40%,
-  100% {
-    transform: translateX(-50%) scale(0.4);
-    opacity: 0;
-  }
-}
-
-@keyframes blast-core-fade {
-  0% {
-    transform: translateX(-50%) scale(0.5);
-    opacity: 0;
-  }
-  10% {
-    transform: translateX(-50%) scale(1.15);
-    opacity: 1;
-  }
-  28% {
-    opacity: 0.5;
-  }
-  40%,
-  100% {
-    transform: translateX(-50%) scale(0.6);
-    opacity: 0.15;
-  }
-}
-
-@keyframes smoke-rise {
-  0% {
-    transform: translateY(6px) scale(0.55);
-    opacity: 0;
-  }
-  12% {
-    opacity: 0.75;
-  }
-  45% {
-    transform: translateY(-14px) scale(1.3);
-    opacity: 0.45;
-  }
-  70%,
-  100% {
-    transform: translateY(-22px) scale(1.5);
-    opacity: 0;
-  }
-}
-
-@keyframes ember-pop {
-  0%,
-  6% {
-    transform: translateY(0) scale(1);
-    opacity: 0;
-  }
-  12% {
-    opacity: 1;
-  }
-  35% {
-    transform: translateY(-20px) scale(0.35);
-    opacity: 0;
-  }
-  36%,
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes tongue-rise {
-  0%,
-  28% {
-    transform: scaleY(0.15) scaleX(0.7);
-    opacity: 0;
-  }
-  38% {
-    transform: scaleY(0.85) scaleX(1);
-    opacity: 0.95;
-  }
-  48% {
-    transform: scaleY(1.08) scaleX(0.95);
-    opacity: 1;
-  }
-  58% {
-    transform: scaleY(0.92) scaleX(1.05);
-    opacity: 0.92;
-  }
-  70% {
-    transform: scaleY(1.05) scaleX(0.98);
-    opacity: 1;
-  }
-  88% {
-    transform: scaleY(0.95) scaleX(1);
-    opacity: 0.85;
-  }
-  100% {
-    transform: scaleY(0.2) scaleX(0.75);
-    opacity: 0;
-  }
 }
 
 @media (max-width: 900px) {

@@ -91,6 +91,8 @@ type CountryFeat = {
   __yemen?: boolean;
   __side?: "houthi" | "gov";
   __stage?: number;
+  /** 0=본채, 1=바깥 안쪽, 2=바깥 먼쪽, 3=영토 안 번짐 */
+  __bleed?: 0 | 1 | 2 | 3;
 };
 
 /** 거의 붙음 → 해당국만 아주 살짝 단을 올려 계단 느낌 */
@@ -100,50 +102,209 @@ const POLY_ALT_STEP_GAP = 0.00055;
 const POLY_ALT_HOVER_BUMP = 0.0014;
 const POLY_ALT_OCCUPIED = 0.0048;
 const POLY_ALT_YEMEN = 0.0065;
+const POLY_ALT_BLEED_IN = 0.0024;
+const POLY_ALT_BLEED_1 = 0.0011;
+const POLY_ALT_BLEED_2 = 0.0004;
 
-/** 해당 국가 / 점령 / 후티·정부 구역 */
-function bleedPolygon(
-  kind: "hover" | "active" | "idle" | "occupied" | "houthi" | "gov",
-) {
+type PolyKind =
+  | "hover"
+  | "active"
+  | "idle"
+  | "occupied"
+  | "houthi"
+  | "gov"
+  | "bleed-active"
+  | "bleed-hover"
+  | "bleed-idle"
+  | "bleed-occupied"
+  | "bleed-houthi"
+  | "bleed-gov"
+  | "fill-active"
+  | "fill-hover"
+  | "fill-idle"
+  | "fill-occupied"
+  | "fill-houthi"
+  | "fill-gov";
+
+/** 링을 중심에서 살짝 키워/줄여 번짐용 외·내곽 생성 */
+function expandRing(ring: number[][], factor: number): number[][] {
+  if (ring.length < 3) return ring;
+  const n = ring.length - 1;
+  let cx = 0;
+  let cy = 0;
+  for (let i = 0; i < n; i++) {
+    cx += ring[i][0];
+    cy += ring[i][1];
+  }
+  cx /= n;
+  cy /= n;
+  const out: number[][] = [];
+  for (let i = 0; i < n; i++) {
+    const lng = ring[i][0];
+    const lat = ring[i][1];
+    out.push([cx + (lng - cx) * factor, cy + (lat - cy) * factor]);
+  }
+  out.push([...out[0]]);
+  return out;
+}
+
+function expandGeometry(geometry: unknown, factor: number): unknown {
+  if (!geometry || typeof geometry !== "object") return geometry;
+  const g = geometry as {
+    type: string;
+    coordinates: number[][][] | number[][][][];
+  };
+  if (g.type === "Polygon") {
+    return {
+      type: "Polygon",
+      coordinates: (g.coordinates as number[][][]).map((ring, i) =>
+        i === 0 ? expandRing(ring, factor) : ring,
+      ),
+    };
+  }
+  if (g.type === "MultiPolygon") {
+    return {
+      type: "MultiPolygon",
+      coordinates: (g.coordinates as number[][][][]).map((poly) =>
+        poly.map((ring, i) => (i === 0 ? expandRing(ring, factor) : ring)),
+      ),
+    };
+  }
+  return geometry;
+}
+
+/** 바깥 번짐 + 영토 안 번짐 */
+function makeBleedCopies(feat: CountryFeat): CountryFeat[] {
+  return [
+    {
+      ...feat,
+      geometry: expandGeometry(feat.geometry, 0.88),
+      __bleed: 3,
+    },
+    {
+      ...feat,
+      geometry: expandGeometry(feat.geometry, 1.018),
+      __bleed: 1,
+    },
+    {
+      ...feat,
+      geometry: expandGeometry(feat.geometry, 1.045),
+      __bleed: 2,
+    },
+  ];
+}
+
+/** 해당 국가 / 점령 / 후티·정부 / 테두리·내부 번짐 */
+function bleedPolygon(kind: PolyKind) {
+  if (kind === "fill-active" || kind === "fill-hover") {
+    return {
+      cap: "rgba(255, 70, 50, 0.28)",
+      side: "rgba(180, 20, 20, 0.06)",
+      stroke: "rgba(255, 120, 100, 0.08)",
+    };
+  }
+  if (kind === "fill-idle") {
+    return {
+      cap: "rgba(90, 120, 150, 0.14)",
+      side: "rgba(20, 30, 40, 0.03)",
+      stroke: "rgba(120, 160, 200, 0.05)",
+    };
+  }
+  if (kind === "fill-occupied") {
+    return {
+      cap: "rgba(255, 150, 50, 0.26)",
+      side: "rgba(160, 60, 10, 0.05)",
+      stroke: "rgba(255, 190, 80, 0.08)",
+    };
+  }
+  if (kind === "fill-houthi") {
+    return {
+      cap: "rgba(255, 70, 80, 0.24)",
+      side: "rgba(140, 10, 25, 0.05)",
+      stroke: "rgba(255, 120, 90, 0.06)",
+    };
+  }
+  if (kind === "fill-gov") {
+    return {
+      cap: "rgba(70, 210, 140, 0.22)",
+      side: "rgba(20, 90, 55, 0.04)",
+      stroke: "rgba(120, 230, 170, 0.06)",
+    };
+  }
+  if (kind === "bleed-active" || kind === "bleed-hover") {
+    return {
+      cap: "rgba(255, 55, 40, 0.16)",
+      side: "rgba(180, 20, 20, 0.08)",
+      stroke: "rgba(255, 90, 70, 0.22)",
+    };
+  }
+  if (kind === "bleed-idle") {
+    return {
+      cap: "rgba(70, 100, 130, 0.1)",
+      side: "rgba(20, 30, 40, 0.04)",
+      stroke: "rgba(120, 160, 200, 0.12)",
+    };
+  }
+  if (kind === "bleed-occupied") {
+    return {
+      cap: "rgba(255, 140, 40, 0.14)",
+      side: "rgba(160, 60, 10, 0.06)",
+      stroke: "rgba(255, 190, 80, 0.2)",
+    };
+  }
+  if (kind === "bleed-houthi") {
+    return {
+      cap: "rgba(255, 60, 70, 0.14)",
+      side: "rgba(140, 10, 25, 0.06)",
+      stroke: "rgba(255, 120, 90, 0.18)",
+    };
+  }
+  if (kind === "bleed-gov") {
+    return {
+      cap: "rgba(60, 200, 130, 0.12)",
+      side: "rgba(20, 90, 55, 0.05)",
+      stroke: "rgba(120, 230, 170, 0.16)",
+    };
+  }
   if (kind === "houthi") {
     return {
-      cap: "rgba(210, 40, 55, 0.62)",
-      side: "rgba(140, 10, 25, 0.82)",
-      stroke: "rgba(255, 120, 90, 0.95)",
+      cap: "rgba(210, 40, 55, 0.32)",
+      side: "rgba(140, 10, 25, 0.35)",
+      stroke: "rgba(255, 140, 110, 0.35)",
     };
   }
   if (kind === "gov") {
     return {
-      cap: "rgba(40, 140, 90, 0.55)",
-      side: "rgba(20, 90, 55, 0.78)",
-      stroke: "rgba(120, 230, 170, 0.92)",
+      cap: "rgba(40, 140, 90, 0.28)",
+      side: "rgba(20, 90, 55, 0.32)",
+      stroke: "rgba(140, 230, 180, 0.32)",
     };
   }
   if (kind === "occupied") {
     return {
-      cap: "rgba(180, 70, 20, 0.78)",
-      side: "rgba(120, 40, 10, 0.85)",
-      stroke: "rgba(255, 200, 80, 0.95)",
+      cap: "rgba(180, 70, 20, 0.38)",
+      side: "rgba(120, 40, 10, 0.35)",
+      stroke: "rgba(255, 200, 80, 0.35)",
     };
   }
   if (kind === "hover") {
     return {
-      cap: "rgba(255, 48, 48, 0.72)",
-      side: "rgba(180, 16, 16, 0.55)",
-      stroke: "rgba(255, 160, 140, 0.95)",
+      cap: "rgba(255, 48, 48, 0.32)",
+      side: "rgba(180, 16, 16, 0.22)",
+      stroke: "rgba(255, 170, 150, 0.28)",
     };
   }
   if (kind === "active") {
     return {
-      cap: "rgba(220, 28, 28, 0.42)",
-      side: "rgba(90, 8, 8, 0.88)",
-      stroke: "rgba(255, 90, 70, 0.85)",
+      cap: "rgba(220, 28, 28, 0.22)",
+      side: "rgba(90, 8, 8, 0.28)",
+      stroke: "rgba(255, 110, 90, 0.28)",
     };
   }
   return {
-    cap: "rgba(8, 12, 18, 0.92)",
-    side: "rgba(4, 6, 10, 0.7)",
-    stroke: "rgba(40, 55, 70, 0.35)",
+    cap: "rgba(12, 18, 26, 0.55)",
+    side: "rgba(4, 6, 10, 0.28)",
+    stroke: "rgba(90, 120, 150, 0.16)",
   };
 }
 
@@ -309,19 +470,20 @@ export default function GlobeView({
     const base = countries.map((f) => {
       const name = f.properties.ADMIN || f.properties.NAME || "";
       const active = matchCountry(name, activeCountryNames);
-      const feat = {
+      const feat: CountryFeat = {
         ...f,
         __active: active,
         __occupied: false,
         __yemen: false,
         __step: active ? step : 0,
+        __bleed: 0,
       };
       if (active) step += 1;
       return feat;
     });
     const extras: CountryFeat[] = [];
     if (showOccupied) {
-      extras.push({
+      const occ: CountryFeat = {
         type: "Feature",
         properties: {
           NAME: "Occupied Ukraine",
@@ -332,21 +494,47 @@ export default function GlobeView({
         __active: false,
         __occupied: true,
         __step: 0,
-      } as CountryFeat);
+        __bleed: 0,
+      };
+      extras.push(occ, ...makeBleedCopies(occ));
     }
     if (showYemenFront) {
       for (const z of HOUTHI_EXPAND_STAGES) {
         if ((z.__stage ?? z.properties.stage) <= houthiStage) {
-          extras.push({ ...(z as YemenZoneFeat) } as CountryFeat);
+          const feat = { ...(z as YemenZoneFeat), __bleed: 0 } as CountryFeat;
+          extras.push(feat, ...makeBleedCopies(feat));
         }
       }
       for (const z of GOV_ADVANCE_ZONES) {
         if ((z.__stage ?? z.properties.stage) <= govStage) {
-          extras.push({ ...(z as YemenZoneFeat) } as CountryFeat);
+          const feat = { ...(z as YemenZoneFeat), __bleed: 0 } as CountryFeat;
+          extras.push(feat, ...makeBleedCopies(feat));
         }
       }
     }
-    return [...base, ...extras];
+
+    const withBleed: CountryFeat[] = [];
+    for (const feat of base) {
+      withBleed.push(feat);
+      if (feat.__active) {
+        withBleed.push(...makeBleedCopies(feat));
+      } else {
+        // 비활성국: 영토 안 번짐 + 바깥 옅은 번짐
+        withBleed.push(
+          {
+            ...feat,
+            geometry: expandGeometry(feat.geometry, 0.9),
+            __bleed: 3,
+          },
+          {
+            ...feat,
+            geometry: expandGeometry(feat.geometry, 1.028),
+            __bleed: 2,
+          },
+        );
+      }
+    }
+    return [...withBleed, ...extras];
   }, [
     countries,
     activeCountryNames,
@@ -596,14 +784,34 @@ export default function GlobeView({
 
   const ready = size.w > 0 && size.h > 0;
 
-  const polyKind = (feat: CountryFeat) => {
-    if (feat.__yemen && feat.__side === "houthi") return "houthi" as const;
-    if (feat.__yemen && feat.__side === "gov") return "gov" as const;
-    if (feat.__occupied) return "occupied" as const;
-    const key = countryKey(feat);
-    if (hoveredKey && key === hoveredKey) return "hover" as const;
-    if (feat.__active) return "active" as const;
-    return "idle" as const;
+  const polyKind = (feat: CountryFeat): PolyKind => {
+    const bleed = feat.__bleed ?? 0;
+    let base: PolyKind = "idle";
+    if (feat.__yemen && feat.__side === "houthi") base = "houthi";
+    else if (feat.__yemen && feat.__side === "gov") base = "gov";
+    else if (feat.__occupied) base = "occupied";
+    else {
+      const key = countryKey(feat);
+      if (hoveredKey && key === hoveredKey) base = "hover";
+      else if (feat.__active) base = "active";
+    }
+    if (bleed === 3) {
+      if (base === "hover") return "fill-hover";
+      if (base === "active") return "fill-active";
+      if (base === "occupied") return "fill-occupied";
+      if (base === "houthi") return "fill-houthi";
+      if (base === "gov") return "fill-gov";
+      return "fill-idle";
+    }
+    if (bleed > 0) {
+      if (base === "hover") return "bleed-hover";
+      if (base === "active") return "bleed-active";
+      if (base === "occupied") return "bleed-occupied";
+      if (base === "houthi") return "bleed-houthi";
+      if (base === "gov") return "bleed-gov";
+      return "bleed-idle";
+    }
+    return base;
   };
 
   return (
@@ -626,6 +834,10 @@ export default function GlobeView({
           polygonAltitude={(d: object) => {
             const feat = d as CountryFeat;
             const kind = polyKind(feat);
+            const bleed = feat.__bleed ?? 0;
+            if (bleed === 3) return POLY_ALT_BLEED_IN;
+            if (bleed === 1) return POLY_ALT_BLEED_1;
+            if (bleed === 2) return POLY_ALT_BLEED_2;
             if (kind === "houthi" || kind === "gov") {
               const newest =
                 kind === "houthi"
@@ -651,10 +863,14 @@ export default function GlobeView({
           polygonStrokeColor={(d: object) =>
             bleedPolygon(polyKind(d as CountryFeat)).stroke
           }
-          polygonsTransitionDuration={720}
+          polygonsTransitionDuration={480}
           onPolygonHover={(d: object | null) => {
             const feat = d as CountryFeat | null;
-            if (feat?.__occupied || feat?.__yemen) {
+            if (feat?.__occupied || feat?.__yemen || (feat?.__bleed ?? 0) > 0) {
+              if ((feat?.__bleed ?? 0) > 0 && !feat?.__occupied && !feat?.__yemen) {
+                setHoveredKey(countryKey(feat));
+                return;
+              }
               setHoveredKey("");
               return;
             }
@@ -693,7 +909,7 @@ export default function GlobeView({
           htmlLng="lng"
           htmlAltitude={(d: object) => {
             const m = (d as HtmlLabel).marker;
-            if (m === "fire") return 0.05;
+            if (m === "fire") return 0.028;
             if (m === "occupied") return 0.028;
             if (m === "chokepoint") return 0.04;
             if (m === "ship") return 0.032;
@@ -748,50 +964,17 @@ export default function GlobeView({
               return wrap;
             }
             if (item.marker === "fire") {
-              const stamp = document.createElement("div");
-              stamp.className = "globe-blast-stamp intel";
-              stamp.title = item.text;
-
-              const blast = document.createElement("div");
-              blast.className = "blast-visual";
-              blast.setAttribute("aria-hidden", "true");
-
-              const smokeL = document.createElement("span");
-              smokeL.className = "smoke smoke-l";
-              const smokeC = document.createElement("span");
-              smokeC.className = "smoke smoke-c";
-              const smokeR = document.createElement("span");
-              smokeR.className = "smoke smoke-r";
-              const flash = document.createElement("span");
-              flash.className = "blast-flash";
-              const core = document.createElement("span");
-              core.className = "blast-core";
-              const ember = document.createElement("span");
-              ember.className = "blast-ember";
-
-              const tongues = document.createElement("span");
-              tongues.className = "fire-tongues";
-              for (const name of ["tongue-a", "tongue-b", "tongue-c"]) {
-                const t = document.createElement("span");
-                t.className = `tongue ${name}`;
-                tongues.append(t);
-              }
-
-              blast.append(
-                smokeL,
-                smokeC,
-                smokeR,
-                flash,
-                core,
-                ember,
-                tongues,
-              );
-
+              const wrap = document.createElement("div");
+              wrap.className = "globe-strike";
+              wrap.title = item.text;
+              const flame = document.createElement("span");
+              flame.className = "strike-flame";
+              flame.setAttribute("aria-hidden", "true");
               const caption = document.createElement("span");
-              caption.className = "blast-caption";
+              caption.className = "strike-caption";
               caption.textContent = item.text;
-              stamp.append(blast, caption);
-              return stamp;
+              wrap.append(flame, caption);
+              return wrap;
             }
             if (item.marker === "occupied") {
               const el = document.createElement("div");
@@ -817,7 +1000,7 @@ export default function GlobeView({
         />
       )}
       <div className="globe-legend" aria-hidden>
-        <span className="lg block">해당국 · 미세 계단 단</span>
+        <span className="lg block">해당국 · 안·밖 번짐</span>
         <span className="lg choke">네온 점 · 해협 막힘</span>
         <span className="lg ship">상선 · 양측 대기</span>
         <span className="lg carrier">미 항모 · 아라비아해</span>
@@ -825,7 +1008,7 @@ export default function GlobeView({
         <span className="lg houthi">빨강 확장 · 후티 연안</span>
         <span className="lg gov">초록 · 정부군 반격</span>
         <span className="lg arrow">점선 · 교류·협력</span>
-        <span className="lg fire">폭발→연기→불혀 · 타격지</span>
+        <span className="lg fire">불 표지 · 타격지</span>
       </div>
       {showYemenFront && (
         <div className="yemen-expand-hud" aria-hidden>

@@ -102,77 +102,445 @@ export function tagToConfirmStatus(tag: ConfirmationTag): ConfirmStatus {
   }
 }
 
-const T1 = [
-  "reuters",
-  "로이터",
-  "ap ",
-  "associated press",
-  "bbc",
-  "nyt",
-  "new york times",
-  "washington post",
-  "wsj",
-  "wall street",
-  "ft ",
-  "financial times",
-  "afp",
-  "nhk",
-  "crs",
-  "의회조사국",
-  "msmt",
-];
-const T2 = [
-  "cnn",
-  "nbc",
-  "abc",
-  "cbs",
-  "bloomberg",
-  "guardian",
-  "al jazeera",
-  "알자지라",
-  "연합뉴스",
-  "yonhap",
-  "hankyoreh",
-  "한겨레",
-  "chosun",
-  "조선",
-  "joongang",
-  "중앙",
-  "donga",
-  "동아",
-  "rferl",
-  "radio free",
-];
-const T3 = [
-  "scmp",
-  "south china morning",
-  "the diplomat",
-  "newsweek",
-  "upi",
-  "cnbc",
-  "fox",
-];
-const T4 = [
-  "xinhua",
-  "신화",
-  "tass",
-  "rt ",
-  "sputnik",
-  "kcna",
-  "조선중앙",
-  "irna",
-  "press tv",
-  "globaltimes",
-  "환구",
+/**
+ * 4티어 매체 카탈로그 (PRD 11장).
+ * T4는 권위주의·관영까지 포함한다. 티어는 올리거나 내리지 않는다.
+ */
+export type MediaOutlet = {
+  id: string;
+  label: string;
+  tier: Exclude<MediaTier, "TX">;
+  /** Google News site: 검색용 */
+  domains: string[];
+  /** 매체명 매칭용 (소문자) */
+  aliases: string[];
+};
+
+export const MEDIA_OUTLETS: MediaOutlet[] = [
+  // —— T1 ——
+  {
+    id: "reuters",
+    label: "Reuters",
+    tier: "T1",
+    domains: ["reuters.com"],
+    aliases: ["reuters", "로이터"],
+  },
+  {
+    id: "ap",
+    label: "AP",
+    tier: "T1",
+    domains: ["apnews.com", "ap.org"],
+    aliases: ["associated press", "ap news", "ap"],
+  },
+  {
+    id: "bbc",
+    label: "BBC",
+    tier: "T1",
+    domains: ["bbc.com", "bbc.co.uk"],
+    aliases: ["bbc"],
+  },
+  {
+    id: "nyt",
+    label: "NYT",
+    tier: "T1",
+    domains: ["nytimes.com"],
+    aliases: ["new york times", "nytimes", "nyt"],
+  },
+  {
+    id: "wapo",
+    label: "Washington Post",
+    tier: "T1",
+    domains: ["washingtonpost.com"],
+    aliases: ["washington post", "wapo"],
+  },
+  {
+    id: "wsj",
+    label: "WSJ",
+    tier: "T1",
+    domains: ["wsj.com"],
+    aliases: ["wall street journal", "wsj"],
+  },
+  {
+    id: "ft",
+    label: "FT",
+    tier: "T1",
+    domains: ["ft.com"],
+    aliases: ["financial times", "ft"],
+  },
+  {
+    id: "afp",
+    label: "AFP",
+    tier: "T1",
+    domains: ["afp.com", "france24.com"],
+    aliases: ["afp", "agence france", "france 24"],
+  },
+  {
+    id: "nhk",
+    label: "NHK",
+    tier: "T1",
+    domains: ["nhk.or.jp"],
+    aliases: ["nhk"],
+  },
+  // —— T2 ——
+  {
+    id: "cnn",
+    label: "CNN",
+    tier: "T2",
+    domains: ["cnn.com"],
+    aliases: ["cnn"],
+  },
+  {
+    id: "nbc",
+    label: "NBC",
+    tier: "T2",
+    domains: ["nbcnews.com"],
+    aliases: ["nbc"],
+  },
+  {
+    id: "bloomberg",
+    label: "Bloomberg",
+    tier: "T2",
+    domains: ["bloomberg.com"],
+    aliases: ["bloomberg", "블룸버그"],
+  },
+  {
+    id: "guardian",
+    label: "The Guardian",
+    tier: "T2",
+    domains: ["theguardian.com"],
+    aliases: ["guardian", "가디언"],
+  },
+  {
+    id: "aljazeera",
+    label: "Al Jazeera",
+    tier: "T2",
+    domains: ["aljazeera.com"],
+    aliases: ["al jazeera", "알자지라"],
+  },
+  {
+    id: "yonhap",
+    label: "연합뉴스",
+    tier: "T2",
+    domains: ["yna.co.kr", "yonhapnews.co.kr"],
+    aliases: ["yonhap", "연합뉴스"],
+  },
+  {
+    id: "hani",
+    label: "한겨레",
+    tier: "T2",
+    domains: ["hani.co.kr"],
+    aliases: ["hankyoreh", "한겨레"],
+  },
+  {
+    id: "chosun",
+    label: "조선일보",
+    tier: "T2",
+    domains: ["chosun.com"],
+    aliases: ["chosun", "조선일보", "조선"],
+  },
+  {
+    id: "joongang",
+    label: "중앙일보",
+    tier: "T2",
+    domains: ["joins.com", "joongang.co.kr"],
+    aliases: ["joongang", "중앙일보", "중앙"],
+  },
+  {
+    id: "donga",
+    label: "동아일보",
+    tier: "T2",
+    domains: ["donga.com"],
+    aliases: ["donga", "동아일보", "동아"],
+  },
+  {
+    id: "rferl",
+    label: "RFE/RL",
+    tier: "T2",
+    domains: ["rferl.org"],
+    aliases: ["rferl", "radio free europe", "radio free"],
+  },
+  {
+    id: "asahi",
+    label: "Asahi",
+    tier: "T2",
+    domains: ["asahi.com"],
+    aliases: ["asahi", "아사히"],
+  },
+  {
+    id: "abc",
+    label: "ABC News",
+    tier: "T2",
+    domains: ["abcnews.go.com"],
+    aliases: ["abc news"],
+  },
+  {
+    id: "cbs",
+    label: "CBS News",
+    tier: "T2",
+    domains: ["cbsnews.com"],
+    aliases: ["cbs news", "cbs"],
+  },
+  // —— T3 ——
+  {
+    id: "scmp",
+    label: "SCMP",
+    tier: "T3",
+    domains: ["scmp.com"],
+    aliases: ["south china morning", "scmp"],
+  },
+  {
+    id: "diplomat",
+    label: "The Diplomat",
+    tier: "T3",
+    domains: ["thediplomat.com"],
+    aliases: ["the diplomat", "diplomat"],
+  },
+  {
+    id: "newsweek",
+    label: "Newsweek",
+    tier: "T3",
+    domains: ["newsweek.com"],
+    aliases: ["newsweek"],
+  },
+  {
+    id: "upi",
+    label: "UPI",
+    tier: "T3",
+    domains: ["upi.com"],
+    aliases: ["upi"],
+  },
+  {
+    id: "cnbc",
+    label: "CNBC",
+    tier: "T3",
+    domains: ["cnbc.com"],
+    aliases: ["cnbc"],
+  },
+  {
+    id: "fox",
+    label: "Fox News",
+    tier: "T3",
+    domains: ["foxnews.com"],
+    aliases: ["fox news", "fox"],
+  },
+  {
+    id: "cna",
+    label: "CNA",
+    tier: "T3",
+    domains: ["channelnewsasia.com"],
+    aliases: ["channel news asia", "cna"],
+  },
+  {
+    id: "arabnews",
+    label: "Arab News",
+    tier: "T3",
+    domains: ["arabnews.com"],
+    aliases: ["arab news"],
+  },
+  {
+    id: "kyodo",
+    label: "Kyodo",
+    tier: "T3",
+    domains: ["kyodonews.net"],
+    aliases: ["kyodo", "교도"],
+  },
+  {
+    id: "nknews",
+    label: "NK News",
+    tier: "T3",
+    domains: ["nknews.org"],
+    aliases: ["nk news", "nknews"],
+  },
+  // —— T4 관영·준관영 (권위주의 포함) ——
+  {
+    id: "xinhua",
+    label: "Xinhua",
+    tier: "T4",
+    domains: ["xinhuanet.com", "news.cn"],
+    aliases: ["xinhua", "신화사", "신화"],
+  },
+  {
+    id: "globaltimes",
+    label: "Global Times",
+    tier: "T4",
+    domains: ["globaltimes.cn"],
+    aliases: ["global times", "환구시보", "환구"],
+  },
+  {
+    id: "people",
+    label: "People's Daily",
+    tier: "T4",
+    domains: ["people.cn", "people.com.cn"],
+    aliases: ["people's daily", "인민일보"],
+  },
+  {
+    id: "cctv",
+    label: "CGTN/CCTV",
+    tier: "T4",
+    domains: ["cgtn.com", "cctv.com"],
+    aliases: ["cgtn", "cctv"],
+  },
+  {
+    id: "tass",
+    label: "TASS",
+    tier: "T4",
+    domains: ["tass.com", "tass.ru"],
+    aliases: ["tass", "타스"],
+  },
+  {
+    id: "ria",
+    label: "RIA Novosti",
+    tier: "T4",
+    domains: ["ria.ru"],
+    aliases: ["ria novosti", "ria", "리아노보스티"],
+  },
+  {
+    id: "rt",
+    label: "RT",
+    tier: "T4",
+    domains: ["rt.com"],
+    aliases: ["rt ", " russia today", "russia today"],
+  },
+  {
+    id: "sputnik",
+    label: "Sputnik",
+    tier: "T4",
+    domains: ["sputniknews.com", "sputnikglobe.com"],
+    aliases: ["sputnik", "스푸트니크"],
+  },
+  {
+    id: "kcna",
+    label: "KCNA",
+    tier: "T4",
+    domains: ["kcna.kp", "kcna.co.jp"],
+    aliases: ["kcna", "조선중앙통신", "조선중앙"],
+  },
+  {
+    id: "rodong",
+    label: "Rodong Sinmun",
+    tier: "T4",
+    domains: ["rodong.rep.kp"],
+    aliases: ["rodong", "로동신문"],
+  },
+  {
+    id: "irna",
+    label: "IRNA",
+    tier: "T4",
+    domains: ["irna.ir"],
+    aliases: ["irna"],
+  },
+  {
+    id: "presstv",
+    label: "Press TV",
+    tier: "T4",
+    domains: ["presstv.ir", "presstv.com"],
+    aliases: ["press tv", "presstv"],
+  },
+  {
+    id: "fars",
+    label: "Fars News",
+    tier: "T4",
+    domains: ["farsnews.ir"],
+    aliases: ["fars news", "fars"],
+  },
+  {
+    id: "mehr",
+    label: "Mehr News",
+    tier: "T4",
+    domains: ["mehrnews.com"],
+    aliases: ["mehr news", "mehr"],
+  },
+  {
+    id: "sana",
+    label: "SANA",
+    tier: "T4",
+    domains: ["sana.sy"],
+    aliases: ["sana"],
+  },
 ];
 
-export function classifyMediaTier(sourceName: string): MediaTier {
+const DOMAIN_TO_TIER = new Map<string, Exclude<MediaTier, "TX">>();
+const ALIAS_ENTRIES: { alias: string; tier: Exclude<MediaTier, "TX"> }[] = [];
+
+for (const o of MEDIA_OUTLETS) {
+  for (const d of o.domains) {
+    DOMAIN_TO_TIER.set(d.toLowerCase(), o.tier);
+  }
+  for (const a of o.aliases) {
+    ALIAS_ENTRIES.push({ alias: a.toLowerCase(), tier: o.tier });
+  }
+}
+// 긴 alias 우선 (ap vs associated press)
+ALIAS_ENTRIES.sort((a, b) => b.alias.length - a.alias.length);
+
+export function outletsByTier(
+  tier: Exclude<MediaTier, "TX">,
+): MediaOutlet[] {
+  return MEDIA_OUTLETS.filter((o) => o.tier === tier);
+}
+
+export function hostFromUrl(url: string | undefined | null): string | null {
+  if (!url) return null;
+  try {
+    const host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+    return host || null;
+  } catch {
+    return null;
+  }
+}
+
+function tierFromHost(host: string | null): MediaTier | null {
+  if (!host) return null;
+  if (DOMAIN_TO_TIER.has(host)) return DOMAIN_TO_TIER.get(host)!;
+  for (const [domain, tier] of DOMAIN_TO_TIER) {
+    if (host === domain || host.endsWith(`.${domain}`)) return tier;
+  }
+  return null;
+}
+
+/**
+ * 티어 판정은 철저하게.
+ * 1) URL 도메인 2) 매체명 alias. T4는 절대 T1/T2로 올리지 않는다.
+ */
+export function classifyMediaTier(
+  sourceName: string,
+  url?: string | null,
+): MediaTier {
+  const fromUrl = tierFromHost(hostFromUrl(url));
+  if (fromUrl) return fromUrl;
+
   const s = ` ${sourceName.toLowerCase()} `;
-  if (T4.some((k) => s.includes(k))) return "T4";
-  if (T1.some((k) => s.includes(k))) return "T1";
-  if (T2.some((k) => s.includes(k))) return "T2";
-  if (T3.some((k) => s.includes(k))) return "T3";
+  for (const { alias, tier } of ALIAS_ENTRIES) {
+    if (alias === "ap") {
+      if (/\bap\b/.test(s) || s.includes(" associated press ")) return tier;
+      continue;
+    }
+    if (alias === "ft") {
+      if (/\bft\b/.test(s) || s.includes(" financial times ")) return tier;
+      continue;
+    }
+    if (alias === "rt ") {
+      if (/\brt\b/.test(s) || s.includes(" russia today ")) return tier;
+      continue;
+    }
+    if (s.includes(alias)) return tier;
+  }
   return "TX";
+}
+
+/** site: 검색용 — 티어별 도메인 묶음 */
+export function siteQueryChunks(
+  tier: Exclude<MediaTier, "TX">,
+  chunkSize = 5,
+): string[] {
+  const domains = outletsByTier(tier).flatMap((o) => o.domains);
+  const chunks: string[] = [];
+  for (let i = 0; i < domains.length; i += chunkSize) {
+    const slice = domains.slice(i, i + chunkSize);
+    const or = slice.map((d) => `site:${d}`).join(" OR ");
+    chunks.push(`(${or})`);
+  }
+  return chunks;
 }
 
 /** 인텔 모드 알록달록 팔레트 */

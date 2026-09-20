@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type {
   AnalysisResult,
   Claim,
@@ -340,20 +340,27 @@ export default function SidePanel(props: Props) {
               sourceName={activeClaim.sources[0]?.label}
             />
             <h3>카드에 적힌 출처</h3>
-            <ul className="sources">
-              {activeClaim.sources.map((s) => (
-                <li key={s.id}>
-                  {s.url ? (
-                    <a href={s.url} target="_blank" rel="noreferrer">
-                      {s.label}
-                    </a>
-                  ) : (
-                    s.label
-                  )}
-                </li>
-              ))}
-            </ul>
-            <ClaimRssLookup querySeed={activeClaim.text} />
+            {activeClaim.sources.length > 0 ? (
+              <ul className="sources">
+                {activeClaim.sources.map((s) => (
+                  <li key={s.id}>
+                    {s.url ? (
+                      <a href={s.url} target="_blank" rel="noreferrer">
+                        {s.label}
+                      </a>
+                    ) : (
+                      s.label
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted">
+                카드에 고정 출처는 아직 없고, 아래 버튼으로 국내·해외 관련 기사를
+                바로 찾아요.
+              </p>
+            )}
+            <ClaimRssLookup querySeed={activeClaim.text} autoStart />
             {activeClaim.counterClaim && (
               <>
                 <h3>반대·상충 주장</h3>
@@ -496,10 +503,20 @@ function AnalysisBlock({
           <span>반대편 입장</span> {analysis.credibility.opposingViews}
         </p>
       </div>
-      {analysis.relatedSources && analysis.relatedSources.length > 0 && (
+      {analysis.relatedSources && analysis.relatedSources.length > 0 ? (
         <RelatedSourcesList
           items={analysis.relatedSources}
           query={analysis.relatedSourcesQuery}
+        />
+      ) : (
+        <ClaimRssLookup
+          querySeed={
+            analysis.relatedSourcesQuery ||
+            analysis.sections.whatNow ||
+            "지정학 뉴스"
+          }
+          autoStart
+          title="관련 뉴스 불러오기"
         />
       )}
     </section>
@@ -515,16 +532,18 @@ function RelatedSourcesList({
 }) {
   return (
     <div className="related-rss">
-      <h3>실제 뉴스 링크</h3>
+      <h3>관련 뉴스 (T1~T4)</h3>
       {query && <p className="muted rss-query">검색: {query}</p>}
       <p className="muted">
-        가능하면 언론사 원문 URL로 열어요. 티어는 매체 이름 기준 참고값이에요.
+        각국 매체와 관영·권위주의(T4)까지 티어 목록으로 모았어요. T4는 당사자
+        주장 신호로만 봐요. 티어는 올리지 않아요.
       </p>
       <ul className="sources news-url-list">
         {items.map((item) => {
           const href = item.url || item.link;
-          const tier = (item.mediaTier as keyof typeof MEDIA_TIER_META) ||
-            classifyMediaTier(item.source);
+          const tier =
+            (item.mediaTier as keyof typeof MEDIA_TIER_META) ||
+            classifyMediaTier(item.source, href);
           const meta = MEDIA_TIER_META[tier] || MEDIA_TIER_META.TX;
           return (
             <li key={href + item.title}>
@@ -539,6 +558,7 @@ function RelatedSourcesList({
                 >
                   {meta.short}
                 </span>
+                <span className="tier-label-mini">{meta.label}</span>
                 {item.source}
               </span>
               <span className="rss-url">{href}</span>
@@ -550,13 +570,21 @@ function RelatedSourcesList({
   );
 }
 
-function ClaimRssLookup({ querySeed }: { querySeed: string }) {
+function ClaimRssLookup({
+  querySeed,
+  autoStart = false,
+  title = "관련 뉴스 불러오기",
+}: {
+  querySeed: string;
+  autoStart?: boolean;
+  title?: string;
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<GoogleNewsHit[] | null>(null);
   const [query, setQuery] = useState<string | undefined>();
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -565,18 +593,31 @@ function ClaimRssLookup({ querySeed }: { querySeed: string }) {
       );
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "관련 보도를 가져오지 못했어요.");
-        setItems([]);
+        setError(
+          data.error ||
+            "잠시 막혔어요. 다시 누르면 T1~T4 매체를 다시 찾아요.",
+        );
+        setItems(null);
         return;
       }
       setQuery(data.query);
-      setItems(data.items || []);
+      const next = (data.items || []) as GoogleNewsHit[];
+      setItems(next);
+      if (next.length === 0) {
+        setError(null);
+      }
     } catch {
-      setError("네트워크 오류가 났어요.");
+      setError("네트워크가 잠깐 끊겼어요. 다시 눌러 주세요.");
+      setItems(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [querySeed]);
+
+  useEffect(() => {
+    if (!autoStart || !querySeed.trim()) return;
+    void load();
+  }, [autoStart, querySeed, load]);
 
   return (
     <div className="related-rss">
@@ -586,14 +627,17 @@ function ClaimRssLookup({ querySeed }: { querySeed: string }) {
         disabled={loading}
         onClick={load}
       >
-        {loading ? "원문 링크 찾는 중…" : "실제 뉴스 URL 가져오기"}
+        {loading ? "T1~T4 매체 찾는 중…" : title}
       </button>
       {error && <p className="warn">{error}</p>}
       {items && items.length > 0 && (
         <RelatedSourcesList items={items} query={query} />
       )}
-      {items && items.length === 0 && !error && (
-        <p className="muted">관련 보도를 찾지 못했어요.</p>
+      {items && items.length === 0 && !error && !loading && (
+        <p className="muted">
+          이번 검색어로는 바로 안 잡혔어요. 버튼을 한 번 더 누르면 더 넓은
+          키워드로 다시 찾아요.
+        </p>
       )}
     </div>
   );

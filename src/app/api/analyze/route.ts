@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeNews } from "@/lib/gemini";
-import {
-  buildSearchQuery,
-  fetchGoogleNewsRss,
-} from "@/lib/googleNewsRss";
+import { fetchRelatedNews } from "@/lib/googleNewsRss";
 import { checkRateLimit, hashIp } from "@/lib/rateLimit";
 import { logAnalysisEvent } from "@/lib/supabase";
 import { classifyMediaTier } from "@/lib/verificationTiers";
@@ -44,21 +41,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const query = buildSearchQuery(text);
-    const [analysis, related] = await Promise.all([
+    const [analysis, relatedPack] = await Promise.all([
       analyzeNews(text),
-      fetchGoogleNewsRss(query, 6).catch((err) => {
+      fetchRelatedNews(text, 12).catch((err) => {
         console.warn("[analyze] google rss", err);
-        return [];
+        return { query: "", items: [] };
       }),
     ]);
 
     if (analysis.isNews) {
-      analysis.relatedSources = related.map((item) => ({
+      analysis.relatedSources = relatedPack.items.map((item) => ({
         ...item,
-        mediaTier: classifyMediaTier(item.source),
+        mediaTier: classifyMediaTier(item.source, item.url || item.link),
       }));
-      analysis.relatedSourcesQuery = query;
+      analysis.relatedSourcesQuery = relatedPack.query;
     }
 
     const ipHash = await hashIp(ip);

@@ -1,40 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  buildSearchQuery,
-  fetchGoogleNewsRss,
-} from "@/lib/googleNewsRss";
+import { fetchRelatedNews } from "@/lib/googleNewsRss";
 import { classifyMediaTier } from "@/lib/verificationTiers";
 
-const MAX_Q = 200;
+const MAX_Q = 400;
 
 export async function GET(req: NextRequest) {
   try {
-    const raw = req.nextUrl.searchParams.get("q") || "";
-    const query = buildSearchQuery(raw.slice(0, MAX_Q));
+    const raw = (req.nextUrl.searchParams.get("q") || "").slice(0, MAX_Q);
 
-    if (query.length < 2) {
+    if (raw.trim().length < 2) {
       return NextResponse.json(
-        { error: "검색어가 너무 짧아요.", items: [], query },
+        { error: "검색어가 너무 짧아요.", items: [], query: raw },
         { status: 400 },
       );
     }
 
-    const items = await fetchGoogleNewsRss(query, 8);
+    const { query, items } = await fetchRelatedNews(raw, 16);
     const withTier = items.map((item) => ({
       ...item,
-      mediaTier: classifyMediaTier(item.source),
+      // URL·매체명으로 재확인. 이미 붙은 티어도 덮어써 승격/강등 방지
+      mediaTier: classifyMediaTier(item.source, item.url || item.link),
     }));
 
     return NextResponse.json({
       query,
       items: withTier,
-      note: "원문 URL을 우선 열고, 본문은 저장하지 않아요.",
+      note: "T1~T4 매체(관영·권위주의 포함)를 티어별로 모아요. 티어는 바꾸지 않아요.",
     });
   } catch (err) {
     console.error("[sources]", err);
     return NextResponse.json(
       {
-        error: "관련 보도를 가져오지 못했어요.",
+        error: "관련 보도를 가져오지 못했어요. 잠시 뒤 다시 눌러 주세요.",
         items: [],
       },
       { status: 502 },

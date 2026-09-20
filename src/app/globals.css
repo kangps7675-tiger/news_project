@@ -624,6 +624,14 @@ textarea:focus {
   vertical-align: middle;
 }
 
+.tier-label-mini {
+  display: inline-block;
+  margin-right: 0.35rem;
+  font-size: 0.68rem;
+  color: var(--ink-muted);
+  vertical-align: middle;
+}
+
 /* —— 교차검증 티어 보드 —— */
 .tier-board {
   margin: var(--space-3) 0;

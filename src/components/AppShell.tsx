@@ -8,7 +8,7 @@ import SidePanel, { type PanelLevel } from "@/components/SidePanel";
 
 const GlobeView = dynamic(() => import("@/components/GlobeView"), {
   ssr: false,
-  loading: () => <div className="globe-placeholder">지구본 불러오는 중…</div>,
+  loading: () => <div className="globe-placeholder">지구본을 그리는 중이에요…</div>,
 });
 
 class GlobeErrorBoundary extends Component<
@@ -25,8 +25,8 @@ class GlobeErrorBoundary extends Component<
     if (this.state.error) {
       return (
         <div className="globe-placeholder">
-          <p>지구본을 불러오지 못했습니다.</p>
-          <p className="muted">{this.state.error}</p>
+          <p>지구본이 잠깐 말을 안 들어요.</p>
+          <p className="muted">새로고침해 보거나, 잠시 뒤 다시 와 주세요.</p>
         </div>
       );
     }

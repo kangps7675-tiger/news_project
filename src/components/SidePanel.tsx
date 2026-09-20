@@ -8,6 +8,7 @@ import type {
   NetworkCard,
 } from "@/types";
 import { EXAMPLE_NEWS } from "@/data/cards";
+import MarketPanel from "@/components/MarketPanel";
 
 export type PanelLevel = "L0" | "L1" | "L2" | "L3" | "L4";
 
@@ -62,7 +63,7 @@ export default function SidePanel(props: Props) {
   const len = newsText.trim().length;
   const lenHint =
     len > 0 && (len < 100 || len > 5000)
-      ? `뉴스 본문은 최소 100자, 최대 5,000자입니다. (현재 ${len}자)`
+      ? `글자가 너무 짧거나 길어요. 100~5,000자여야 해요. (지금 ${len}자)`
       : null;
 
   return (
@@ -70,7 +71,7 @@ export default function SidePanel(props: Props) {
       <header className="panel-head">
         <div className="brand">
           <p className="brand-name">뉴스 뒷맥락</p>
-          <p className="brand-sub">사건의 뿌리와 지정학 고리</p>
+          <p className="brand-sub">뉴스 뒤에 숨은 이야기를, 쉽게</p>
         </div>
         {level !== "L0" && (
           <button type="button" className="btn-ghost" onClick={onBack}>
@@ -83,10 +84,10 @@ export default function SidePanel(props: Props) {
         <nav className="level-nav" aria-label="심화 단계">
           {(
             [
-              ["L1", "개요"],
-              ["L2", "고리"],
+              ["L1", "한눈에"],
+              ["L2", "연결고리"],
               ["L3", "근거"],
-              ["L4", "연결"],
+              ["L4", "이어보기"],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -104,15 +105,25 @@ export default function SidePanel(props: Props) {
       <div className="panel-body">
         {level === "L0" && (
           <>
+            <section className="block tip-box">
+              <h2>어떻게 쓰면 돼요?</h2>
+              <ol className="how-to">
+                <li>뉴스를 붙여넣고 ‘쉽게 풀어줘’를 눌러요.</li>
+                <li>왼쪽 지구본에서 나라가 블록처럼 솟아올라요.</li>
+                <li>아래 카드를 눌러 이야기를 더 깊게 봐요.</li>
+              </ol>
+            </section>
+
             <section className="block">
               <h2>뉴스 붙여넣기</h2>
               <p className="muted block-lead">
-                본문을 넣으면 4단 해설과 맞는 네트워크 카드로 연결합니다.
+                어려운 뉴스를 넣으면, “그래서 뭐가 중요한데?”를 네 칸으로
+                풀어줘요.
               </p>
               <textarea
                 value={newsText}
                 onChange={(e) => onNewsChange(e.target.value)}
-                placeholder="뉴스 본문을 붙여넣어 주세요 (100~5,000자)"
+                placeholder="뉴스 본문을 여기에 붙여넣어요 (100~5,000자)"
                 rows={6}
                 maxLength={5000}
               />
@@ -126,19 +137,19 @@ export default function SidePanel(props: Props) {
                   disabled={loading || !!lenHint || len === 0}
                   onClick={onAnalyze}
                 >
-                  {loading ? "해설 생성 중…" : "해설 생성"}
+                  {loading ? "읽는 중…" : "쉽게 풀어줘"}
                 </button>
                 <button
                   type="button"
                   className="btn-ghost"
                   onClick={() => onNewsChange(EXAMPLE_NEWS)}
                 >
-                  예시 뉴스
+                  예시 넣어보기
                 </button>
               </div>
               {loading && (
                 <p className="muted loading-hint">
-                  배경을 푸는 중입니다. 최대 30초 걸릴 수 있습니다.
+                  배경 이야기를 찾는 중이에요. 커피 한 모금 마실 시간…
                 </p>
               )}
             </section>
@@ -153,14 +164,18 @@ export default function SidePanel(props: Props) {
             )}
             {analysis && !analysis.isNews && (
               <p className="warn">
-                {analysis.rejectionReason || "뉴스 본문을 붙여넣어 주세요"}
+                {analysis.rejectionReason ||
+                  "뉴스처럼 보이는 글을 붙여넣어 주세요"}
               </p>
             )}
 
+            <MarketPanel cardId={null} />
+
             <section className="block">
-              <h2>네트워크 카드</h2>
+              <h2>이야기 카드</h2>
               <p className="muted block-lead">
-                카드 {cards.length}개 · 골라서 지구본에서 고리를 따라가 보세요.
+                세계가 얽힌 이야기 {cards.length}장이에요. 하나를 누르면 왼쪽
+                지도가 그 나라들을 블록처럼 들어 올려요.
               </p>
               <ul className="card-list">
                 {cards.map((c, i) => (
@@ -192,7 +207,7 @@ export default function SidePanel(props: Props) {
                 (p) => p.cardId === activeCard.id,
               ) && (
                 <div className="callout-box">
-                  <strong>이 뉴스의 위치</strong>
+                  <strong>이 뉴스가 꽂힌 자리</strong>
                   <p>
                     {
                       analysis.networkPositions.find(
@@ -205,19 +220,19 @@ export default function SidePanel(props: Props) {
             {analysis?.isNews && (
               <div className="four-sections">
                 <article>
-                  <h3>1. 지금 무슨 일이야</h3>
+                  <h3>1. 지금 무슨 일이야?</h3>
                   <p>{analysis.sections.whatNow}</p>
                 </article>
                 <article>
-                  <h3>2. 뿌리</h3>
+                  <h3>2. 뿌리는 뭐야?</h3>
                   <p>{analysis.sections.roots}</p>
                 </article>
                 <article>
-                  <h3>3. 누가 뭘 원하나</h3>
+                  <h3>3. 누가 뭘 원해?</h3>
                   <p>{analysis.sections.motives}</p>
                 </article>
                 <article>
-                  <h3>4. 시장에 닿는 경로</h3>
+                  <h3>4. 시장에 닿을 수 있는 길</h3>
                   <p>{analysis.sections.marketPaths}</p>
                 </article>
               </div>
@@ -225,11 +240,11 @@ export default function SidePanel(props: Props) {
             {!analysis?.isNews && (
               <div className="four-sections">
                 <article>
-                  <h3>네트워크 요약</h3>
+                  <h3>한 줄로 말하면</h3>
                   <p>{activeCard.summary}</p>
                 </article>
                 <article>
-                  <h3>단정 금지</h3>
+                  <h3>함부로 말하면 안 되는 것</h3>
                   <ul>
                     {activeCard.doNotAssert.map((d) => (
                       <li key={d}>{d}</li>
@@ -237,40 +252,43 @@ export default function SidePanel(props: Props) {
                   </ul>
                 </article>
                 <article>
-                  <h3>시장 접점 후보</h3>
+                  <h3>시장 쪽 힌트 (가능성만)</h3>
                   <p>{activeCard.marketTouchpoints.join(" · ")}</p>
                 </article>
               </div>
             )}
             {analysis?.isNews && (
               <div className="cred">
-                <h3>기사 신뢰도 점검</h3>
+                <h3>이 기사, 얼마나 믿을까?</h3>
                 <p>
-                  <span>원천</span> {analysis.credibility.source}
+                  <span>어디서 왔어요</span> {analysis.credibility.source}
                 </p>
                 <p>
-                  <span>주장 구분</span> {analysis.credibility.claimType}
+                  <span>무슨 종류의 말</span> {analysis.credibility.claimType}
                 </p>
                 <p>
-                  <span>반대편 입장</span>{" "}
+                  <span>반대쪽 이야기도?</span>{" "}
                   {analysis.credibility.opposingViews}
                 </p>
               </div>
             )}
+            <MarketPanel cardId={activeCard.id} />
             <button
               type="button"
               className="btn-primary wide"
               onClick={() => onSetLevel("L2")}
             >
-              고리 목록 보기
+              연결고리 더 보기
             </button>
           </section>
         )}
 
         {level === "L2" && activeCard && (
           <section className="block">
-            <h2>고리</h2>
-            <p className="muted">고리를 누르면 지구본 씬이 바뀝니다.</p>
+            <h2>연결고리</h2>
+            <p className="muted">
+              고리를 누르면 왼쪽 지구본에 화살표가 블록처럼 솟아올라요.
+            </p>
             <ul className="claim-list">
               {activeCard.claims.map((claim) => (
                 <li key={claim.id}>
@@ -297,7 +315,7 @@ export default function SidePanel(props: Props) {
                 className="btn-primary wide"
                 onClick={() => onSetLevel("L3")}
               >
-                이 고리의 근거 보기
+                이 고리, 근거 보기
               </button>
             )}
           </section>
@@ -305,14 +323,18 @@ export default function SidePanel(props: Props) {
 
         {level === "L3" && activeCard && activeClaim && (
           <section className="block">
-            <h2>근거</h2>
+            <h2>근거 살펴보기</h2>
             <p className="lead">{activeClaim.text}</p>
             <div className="meta-row">
               <span className={TAG_CLASS[activeClaim.tag] || "tag"}>
                 {activeClaim.tag}
               </span>
-              <span className="grade">등급 {activeClaim.grade}</span>
+              <span className="grade">믿을 만함 등급 {activeClaim.grade}</span>
             </div>
+            <p className="muted">
+              등급은 시험 점수 같아요. A에 가까울수록 “여러 곳이 같이 말한
+              편”, X는 “아직 못 찾음”에 가까워요.
+            </p>
             <h3>출처</h3>
             <ul className="sources">
               {activeClaim.sources.map((s) => (
@@ -335,26 +357,26 @@ export default function SidePanel(props: Props) {
               </>
             )}
             <div className="caveat">
-              <strong>단정 금지</strong>
+              <strong>조심! 단정 금지</strong>
               <p>{activeClaim.caveat}</p>
             </div>
             {activeClaim.scene.asOf && (
-              <p className="muted">기준일 {activeClaim.scene.asOf}</p>
+              <p className="muted">기준 날짜 {activeClaim.scene.asOf}</p>
             )}
             <button
               type="button"
               className="btn-primary wide"
               onClick={() => onSetLevel("L4")}
             >
-              연결 보기
+              다른 이야기와 이어보기
             </button>
           </section>
         )}
 
         {level === "L4" && activeCard && (
           <section className="block">
-            <h2>연결</h2>
-            <h3>관련 카드</h3>
+            <h2>이어보기</h2>
+            <h3>비슷한 이야기 카드</h3>
             <ul className="related">
               {activeCard.relatedCardIds.map((id) => {
                 const related = cards.find((c) => c.id === id);
@@ -366,27 +388,29 @@ export default function SidePanel(props: Props) {
                       className="card-btn"
                       onClick={() => onGoRelated(id)}
                     >
-                      <span className="card-title">{related.name}</span>
-                      <span className="card-sum">{related.summary}</span>
+                      <span className="card-copy">
+                        <span className="card-title">{related.name}</span>
+                        <span className="card-sum">{related.summary}</span>
+                      </span>
                     </button>
                   </li>
                 );
               })}
             </ul>
-            <h3>시장 접점 후보</h3>
-            <p className="muted">가능성만. 투자 조언이 아닙니다.</p>
+            <h3>시장 쪽 힌트 (가능성만)</h3>
+            <p className="muted">사라는 뜻이 아니에요. 관심 분야 힌트예요.</p>
             <ul>
               {activeCard.marketTouchpoints.map((m) => (
                 <li key={m}>{m}</li>
               ))}
             </ul>
+            <MarketPanel cardId={activeCard.id} />
           </section>
         )}
       </div>
 
       <footer className="disclaimer">
-        투자 조언이 아니며 AI가 틀릴 수 있습니다. 종목 추천·매수·매도 의견은
-        제공하지 않습니다.
+        투자 조언이 아니에요. AI도 틀릴 수 있어요. “사라/팔라”는 절대 안 해요.
       </footer>
     </aside>
   );
@@ -406,31 +430,31 @@ function AnalysisBlock({
   return (
     <section className="block analysis-result">
       <div className="row between">
-        <h2>해설 결과</h2>
+        <h2>쉽게 풀어본 결과</h2>
         <button type="button" className="btn-ghost" onClick={onClear}>
           닫기
         </button>
       </div>
       <div className="four-sections">
         <article>
-          <h3>1. 지금 무슨 일이야</h3>
+          <h3>1. 지금 무슨 일이야?</h3>
           <p>{analysis.sections.whatNow}</p>
         </article>
         <article>
-          <h3>2. 뿌리</h3>
+          <h3>2. 뿌리는 뭐야?</h3>
           <p>{analysis.sections.roots}</p>
         </article>
         <article>
-          <h3>3. 누가 뭘 원하나</h3>
+          <h3>3. 누가 뭘 원해?</h3>
           <p>{analysis.sections.motives}</p>
         </article>
         <article>
-          <h3>4. 시장에 닿는 경로</h3>
+          <h3>4. 시장에 닿을 수 있는 길</h3>
           <p>{analysis.sections.marketPaths}</p>
         </article>
       </div>
       <div className="callout-box">
-        <strong>네트워크 위치</strong>
+        <strong>어느 이야기 카드에 꽂히나요?</strong>
         {analysis.networkPositions.map((p, i) => (
           <p key={i}>
             {p.oneLiner}

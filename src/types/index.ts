@@ -16,7 +16,7 @@ export interface SourceRef {
   url?: string;
 }
 
-export type GlobeMarker = "dot" | "fire";
+export type GlobeMarker = "dot" | "fire" | "chokepoint" | "ship" | "carrier";
 
 export interface GlobeLayer {
   type: LayerType;
@@ -30,6 +30,12 @@ export interface GlobeLayer {
   to?: [number, number];
   /** 전장·폭격 지점 도장 (기본 dot) */
   marker?: GlobeMarker;
+  /**
+   * 아크/선 스타일.
+   * true = 점선(교류·협력·공급), false = 실선(공습·타격).
+   * 생략 시 라벨로 추론.
+   */
+  dashed?: boolean;
 }
 
 export interface Callout {

@@ -584,11 +584,13 @@ export default function GlobeView({
     if (activeClaim?.scene) {
       const { lat, lng, altitude } = activeClaim.scene.camera;
       g.pointOfView({ lat, lng, altitude }, 1100);
+    } else if (activeCard?.id === "c5") {
+      g.pointOfView({ lat: 20, lng: 56, altitude: 2.0 }, 900);
     } else if (activeCard?.focusPoints[0]) {
       const p = activeCard.focusPoints[0];
       g.pointOfView({ lat: p.lat, lng: p.lng, altitude: 1.55 }, 900);
     } else {
-      g.pointOfView({ lat: 28, lng: 55, altitude: 2.05 }, 900);
+      g.pointOfView({ lat: 24, lng: 58, altitude: 2.2 }, 900);
     }
   }, [activeCard, activeClaim, size.w]);
 

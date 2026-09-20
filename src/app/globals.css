@@ -129,7 +129,10 @@ textarea {
 .lg.fire::before,
 .lg.occupied::before,
 .lg.houthi::before,
-.lg.gov::before {
+.lg.gov::before,
+.lg.choke::before,
+.lg.ship::before,
+.lg.carrier::before {
   content: "";
   display: inline-block;
   width: 0.5rem;
@@ -160,6 +163,27 @@ textarea {
 .lg.houthi::before {
   background: rgba(210, 40, 55, 0.95);
   box-shadow: 0 0 6px rgba(255, 80, 60, 0.65);
+}
+
+.lg.choke::before {
+  background: #ff1a1a;
+  border-radius: 50%;
+  box-shadow:
+    0 0 6px #ff0000,
+    0 0 14px #ff2200;
+}
+
+.lg.ship::before {
+  background: #9eb6c8;
+  clip-path: polygon(10% 55%, 90% 55%, 78% 85%, 22% 85%);
+}
+
+.lg.carrier::before {
+  width: 0.7rem;
+  height: 0.35rem;
+  background: #3d6ea8;
+  clip-path: polygon(4% 55%, 18% 25%, 88% 25%, 98% 55%, 92% 80%, 8% 80%);
+  box-shadow: 0 0 6px rgba(80, 140, 220, 0.55);
 }
 
 .lg.gov::before {
@@ -227,6 +251,189 @@ textarea {
   padding: 2px 6px;
   transform: translate(-50%, -110%);
   box-shadow: 0 0 8px rgba(255, 120, 40, 0.35);
+}
+
+/* 해협 막힘 — 악귀 같은 선명 붉은 네온 */
+.globe-chokepoint {
+  pointer-events: none;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  transform: translate(-50%, -55%);
+}
+
+.globe-chokepoint .choke-core {
+  position: relative;
+  z-index: 2;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    #fff0f0 0%,
+    #ff3a3a 28%,
+    #ff0000 55%,
+    #8b0000 100%
+  );
+  box-shadow:
+    0 0 8px 3px rgba(255, 0, 0, 0.95),
+    0 0 22px 8px rgba(255, 20, 0, 0.75),
+    0 0 40px 14px rgba(180, 0, 0, 0.45);
+  animation: choke-pulse 1.15s ease-in-out infinite;
+}
+
+.globe-chokepoint .choke-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  margin: -18px 0 0 -14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 40, 40, 0.85);
+  box-shadow:
+    0 0 12px rgba(255, 0, 0, 0.8),
+    inset 0 0 10px rgba(255, 0, 0, 0.35);
+  animation: choke-ring 1.6s ease-out infinite;
+}
+
+.globe-chokepoint .choke-caption {
+  max-width: 88px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  text-align: center;
+  color: #ffd0d0;
+  text-shadow:
+    0 0 6px #ff0000,
+    0 0 12px rgba(255, 0, 0, 0.8);
+  background: rgba(40, 0, 0, 0.85);
+  border: 1px solid rgba(255, 50, 50, 0.7);
+  padding: 1px 5px;
+}
+
+@keyframes choke-pulse {
+  0%,
+  100% {
+    transform: scale(0.92);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.18);
+    filter: brightness(1.35);
+  }
+}
+
+@keyframes choke-ring {
+  0% {
+    transform: scale(0.65);
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(1.85);
+    opacity: 0;
+  }
+}
+
+/* 해협 양측 상선 (막혀 대기) */
+.globe-ship {
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: translate(-50%, -70%);
+}
+
+.globe-ship .ship-icon {
+  width: 22px;
+  height: 12px;
+  position: relative;
+  background: linear-gradient(180deg, #d8e4ef 0%, #8fa5b8 55%, #5a7084 100%);
+  clip-path: polygon(
+    8% 45%,
+    22% 20%,
+    78% 20%,
+    92% 45%,
+    88% 75%,
+    12% 75%
+  );
+  box-shadow: 0 0 8px rgba(180, 210, 230, 0.45);
+}
+
+.globe-ship .ship-icon::before {
+  content: "";
+  position: absolute;
+  left: 28%;
+  top: -6px;
+  width: 5px;
+  height: 8px;
+  background: #c5d4e0;
+  box-shadow: 8px 0 0 #c5d4e0;
+}
+
+.globe-ship .ship-caption {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #c8d8e6;
+  background: rgba(10, 18, 28, 0.88);
+  border: 1px solid rgba(150, 180, 200, 0.45);
+  padding: 0 4px;
+}
+
+/* 아라비아해 미 항모 */
+.globe-carrier {
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  transform: translate(-50%, -72%);
+}
+
+.globe-carrier .carrier-icon {
+  width: 34px;
+  height: 14px;
+  position: relative;
+  background: linear-gradient(180deg, #6a8fc0 0%, #2f5690 45%, #1a3558 100%);
+  clip-path: polygon(
+    2% 55%,
+    12% 22%,
+    86% 18%,
+    98% 48%,
+    94% 78%,
+    8% 82%
+  );
+  box-shadow:
+    0 0 10px rgba(90, 150, 230, 0.55),
+    0 0 18px rgba(40, 90, 180, 0.35);
+}
+
+.globe-carrier .carrier-island {
+  position: absolute;
+  right: 22%;
+  top: -5px;
+  width: 7px;
+  height: 9px;
+  background: #c9d8ea;
+  box-shadow: 0 0 4px rgba(200, 220, 255, 0.5);
+}
+
+.globe-carrier .carrier-caption {
+  max-width: 72px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+  text-align: center;
+  color: #d4e4f8;
+  background: rgba(8, 20, 40, 0.9);
+  border: 1px solid rgba(90, 140, 210, 0.55);
+  padding: 1px 5px;
 }
 
 .panel {
@@ -925,7 +1132,7 @@ textarea:focus {
   }
 }
 
-/* 전장·폭격 지점: 폭발 화염 + 연기 */
+/* 전장·폭격: ①폭발화염+연기 → ②불 혀가 솟음 */
 .globe-blast-stamp {
   pointer-events: none;
   display: flex;
@@ -938,8 +1145,8 @@ textarea:focus {
 
 .globe-blast-stamp .blast-visual {
   position: relative;
-  width: 36px;
-  height: 42px;
+  width: 40px;
+  height: 48px;
 }
 
 .globe-blast-stamp .smoke {
@@ -951,7 +1158,7 @@ textarea:focus {
     rgba(55, 55, 60, 0.4) 45%,
     rgba(30, 30, 35, 0) 72%
   );
-  animation: smoke-rise 2.8s ease-out infinite;
+  animation: smoke-rise 3.6s ease-out infinite;
 }
 
 .globe-blast-stamp .smoke-l {
@@ -965,9 +1172,9 @@ textarea:focus {
 .globe-blast-stamp .smoke-c {
   width: 20px;
   height: 20px;
-  left: 8px;
+  left: 10px;
   bottom: 22px;
-  animation-delay: 0.45s;
+  animation-delay: 0.35s;
   opacity: 0.85;
 }
 
@@ -976,15 +1183,15 @@ textarea:focus {
   height: 14px;
   right: 0;
   bottom: 16px;
-  animation-delay: 0.9s;
+  animation-delay: 0.7s;
 }
 
 .globe-blast-stamp .blast-flash {
   position: absolute;
   left: 50%;
   bottom: 2px;
-  width: 28px;
-  height: 22px;
+  width: 30px;
+  height: 24px;
   transform: translateX(-50%);
   background:
     radial-gradient(ellipse 80% 70% at 50% 70%, #fff6c8 0%, transparent 55%),
@@ -1010,7 +1217,8 @@ textarea:focus {
     22% 8%,
     42% 14%
   );
-  animation: blast-pulse 1.1s ease-in-out infinite alternate;
+  animation: blast-burst 3.6s ease-out infinite;
+  transform-origin: 50% 100%;
 }
 
 .globe-blast-stamp .blast-core {
@@ -1028,7 +1236,8 @@ textarea:focus {
     transparent 100%
   );
   border-radius: 50% 50% 40% 40%;
-  animation: blast-pulse 0.85s ease-in-out infinite alternate-reverse;
+  animation: blast-core-fade 3.6s ease-out infinite;
+  transform-origin: 50% 100%;
 }
 
 .globe-blast-stamp .blast-ember {
@@ -1045,7 +1254,89 @@ textarea:focus {
     7px -10px 0 -0.5px #ffb040,
     3px -14px 0 0 #ff6020,
     -4px -12px 0 -1px #ffa050;
-  animation: ember-pop 1.6s ease-out infinite;
+  animation: ember-pop 3.6s ease-out infinite;
+}
+
+/* 폭발 이후: 불 혀 */
+.globe-blast-stamp .fire-tongues {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 28px;
+  height: 34px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.globe-blast-stamp .tongue {
+  position: absolute;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 85%, #fff3a8 0%, transparent 50%),
+    radial-gradient(ellipse 80% 70% at 45% 55%, #ff9a1a 0%, transparent 58%),
+    radial-gradient(ellipse 70% 90% at 55% 30%, #ff3b00 0%, transparent 68%),
+    linear-gradient(180deg, #c41000 0%, #ff5a00 55%, transparent 100%);
+  filter: drop-shadow(0 0 4px rgba(255, 80, 20, 0.75));
+  transform-origin: 50% 100%;
+  opacity: 0;
+  animation: tongue-rise 3.6s ease-in-out infinite;
+}
+
+.globe-blast-stamp .tongue-a {
+  left: 3px;
+  width: 9px;
+  height: 26px;
+  clip-path: polygon(
+    50% 0%,
+    72% 22%,
+    88% 40%,
+    70% 58%,
+    82% 100%,
+    50% 78%,
+    18% 100%,
+    30% 58%,
+    12% 40%,
+    28% 22%
+  );
+  animation-delay: 0s;
+}
+
+.globe-blast-stamp .tongue-b {
+  left: 10px;
+  width: 11px;
+  height: 32px;
+  clip-path: polygon(
+    48% 0%,
+    68% 18%,
+    90% 32%,
+    72% 52%,
+    86% 100%,
+    50% 80%,
+    14% 100%,
+    28% 52%,
+    10% 32%,
+    32% 18%
+  );
+  animation-delay: 0.12s;
+}
+
+.globe-blast-stamp .tongue-c {
+  right: 2px;
+  width: 8px;
+  height: 22px;
+  clip-path: polygon(
+    50% 0%,
+    75% 25%,
+    92% 45%,
+    68% 62%,
+    80% 100%,
+    50% 76%,
+    20% 100%,
+    32% 62%,
+    8% 45%,
+    25% 25%
+  );
+  animation-delay: 0.22s;
 }
 
 .globe-blast-stamp .blast-caption {
@@ -1081,38 +1372,116 @@ textarea:focus {
   border-color: rgba(255, 110, 50, 0.7);
 }
 
-@keyframes blast-pulse {
-  from {
-    transform: translateX(-50%) scale(0.92);
-    opacity: 0.88;
+/* 0~28%: 폭발 / 28%~: 불혀 */
+@keyframes blast-burst {
+  0% {
+    transform: translateX(-50%) scale(0.35);
+    opacity: 0;
   }
-  to {
-    transform: translateX(-50%) scale(1.08);
+  8% {
+    transform: translateX(-50%) scale(1.25);
     opacity: 1;
+  }
+  18% {
+    transform: translateX(-50%) scale(1.05);
+    opacity: 0.95;
+  }
+  32% {
+    transform: translateX(-50%) scale(0.7);
+    opacity: 0.15;
+  }
+  40%,
+  100% {
+    transform: translateX(-50%) scale(0.4);
+    opacity: 0;
+  }
+}
+
+@keyframes blast-core-fade {
+  0% {
+    transform: translateX(-50%) scale(0.5);
+    opacity: 0;
+  }
+  10% {
+    transform: translateX(-50%) scale(1.15);
+    opacity: 1;
+  }
+  28% {
+    opacity: 0.5;
+  }
+  40%,
+  100% {
+    transform: translateX(-50%) scale(0.6);
+    opacity: 0.15;
   }
 }
 
 @keyframes smoke-rise {
   0% {
-    transform: translateY(4px) scale(0.7);
-    opacity: 0.15;
+    transform: translateY(6px) scale(0.55);
+    opacity: 0;
   }
-  35% {
-    opacity: 0.7;
+  12% {
+    opacity: 0.75;
   }
+  45% {
+    transform: translateY(-14px) scale(1.3);
+    opacity: 0.45;
+  }
+  70%,
   100% {
-    transform: translateY(-16px) scale(1.35);
+    transform: translateY(-22px) scale(1.5);
     opacity: 0;
   }
 }
 
 @keyframes ember-pop {
-  0% {
+  0%,
+  6% {
     transform: translateY(0) scale(1);
-    opacity: 0.9;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  35% {
+    transform: translateY(-20px) scale(0.35);
+    opacity: 0;
+  }
+  36%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes tongue-rise {
+  0%,
+  28% {
+    transform: scaleY(0.15) scaleX(0.7);
+    opacity: 0;
+  }
+  38% {
+    transform: scaleY(0.85) scaleX(1);
+    opacity: 0.95;
+  }
+  48% {
+    transform: scaleY(1.08) scaleX(0.95);
+    opacity: 1;
+  }
+  58% {
+    transform: scaleY(0.92) scaleX(1.05);
+    opacity: 0.92;
+  }
+  70% {
+    transform: scaleY(1.05) scaleX(0.98);
+    opacity: 1;
+  }
+  88% {
+    transform: scaleY(0.95) scaleX(1);
+    opacity: 0.85;
   }
   100% {
-    transform: translateY(-18px) scale(0.4);
+    transform: scaleY(0.2) scaleX(0.75);
     opacity: 0;
   }
 }

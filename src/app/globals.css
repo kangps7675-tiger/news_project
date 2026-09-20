@@ -1023,6 +1023,123 @@ textarea:focus {
   color: var(--accent);
   white-space: nowrap;
   font-family: var(--font-display);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+}
+
+.market-price .chg,
+.asset-move-nums .chg,
+.market-chip .chg {
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: var(--font-body, inherit);
+}
+
+.chg.up {
+  color: #9a4a1c;
+}
+
+.chg.down {
+  color: #5a6b3a;
+}
+
+.market-focus {
+  margin: 0.35rem 0 0.75rem;
+  padding: 0.55rem 0.65rem;
+  border-left: 3px solid var(--accent);
+  background: rgba(139, 90, 43, 0.06);
+}
+
+.market-focus h3 {
+  margin: 0 0 0.2rem;
+  font-size: 0.95rem;
+}
+
+.asset-move-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.asset-move {
+  padding: 0.65rem 0.7rem;
+  border: 1px solid rgba(90, 65, 35, 0.22);
+  background: rgba(255, 250, 240, 0.75);
+}
+
+.asset-move.up {
+  border-color: rgba(154, 74, 28, 0.35);
+  background: rgba(154, 74, 28, 0.06);
+}
+
+.asset-move.down {
+  border-color: rgba(90, 107, 58, 0.35);
+  background: rgba(90, 107, 58, 0.07);
+}
+
+.asset-move.compact {
+  padding: 0.45rem 0.55rem;
+}
+
+.asset-move-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.asset-move-name {
+  display: block;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.asset-move-nums {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  flex-shrink: 0;
+}
+
+.sparkline {
+  display: block;
+  margin: 0.35rem 0 0.25rem;
+  max-width: 220px;
+}
+
+.asset-move-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.72rem;
+}
+
+.move-pill {
+  display: inline-block;
+  padding: 0.12rem 0.4rem;
+  font-weight: 700;
+  font-size: 0.68rem;
+  border: 1px solid rgba(90, 65, 35, 0.25);
+  color: var(--ink-muted);
+}
+
+.move-pill.up {
+  color: #9a4a1c;
+  border-color: rgba(154, 74, 28, 0.4);
+  background: rgba(154, 74, 28, 0.08);
+}
+
+.move-pill.down {
+  color: #5a6b3a;
+  border-color: rgba(90, 107, 58, 0.4);
+  background: rgba(90, 107, 58, 0.1);
 }
 
 .market-why {

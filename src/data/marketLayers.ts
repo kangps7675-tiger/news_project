@@ -1,12 +1,14 @@
-/** 카드별 시장 접점 → 토스 심볼 매핑 (주식·ETF·지표). 투자 조언 아님. */
+/** 카드(사안)별 맞닿는 자산 → FRED 시계열. 눈으로 움직임 확인용. 투자 조언 아님. */
 
 export type MarketInstrument = {
+  /** FRED series_id */
   symbol: string;
-  /** 사람에게 보이는 쉬운 이름 */
   label: string;
-  /** 왜 이 카드를 보는지 한 줄 */
+  /** 이 사안과 왜 맞닿는지 */
   why: string;
-  kind: "stock" | "etf" | "index" | "bond" | "fx";
+  kind: "index" | "bond" | "fx" | "commodity" | "rate";
+  unit?: string;
+  digits?: number;
 };
 
 export type CardMarketLayer = {
@@ -14,206 +16,246 @@ export type CardMarketLayer = {
   title: string;
   blurb: string;
   instruments: MarketInstrument[];
-  /** 호가창을 열어볼 대표 심볼 */
-  orderbookSymbol?: string;
 };
 
-/** 전역으로 항상 보여주는 지표 */
+/** 전역 배경 온도계 */
 export const GLOBAL_INDICATORS: MarketInstrument[] = [
   {
-    symbol: "KOSPI",
-    label: "코스피",
-    why: "한국 주식시장 전체의 기분 온도계예요.",
-    kind: "index",
-  },
-  {
-    symbol: "KOSDAQ",
-    label: "코스닥",
-    why: "작은·성장 기업 쪽 온도계예요.",
-    kind: "index",
-  },
-  {
-    symbol: "KR_BOND_10Y",
-    label: "국채 10년",
-    why: "금리 분위기. 숫자가 커지면 이자 부담이 커진다는 뜻에 가깝아요.",
+    symbol: "DGS10",
+    label: "미국 국채 10년",
+    why: "세계 금리 분위기.",
     kind: "bond",
+    unit: "%",
+    digits: 2,
+  },
+  {
+    symbol: "VIXCLS",
+    label: "VIX (공포지수)",
+    why: "시장 긴장도.",
+    kind: "index",
+    digits: 2,
+  },
+  {
+    symbol: "DEXKOUS",
+    label: "원·달러",
+    why: "한국 환율.",
+    kind: "fx",
+    unit: "원/$",
+    digits: 2,
   },
 ];
 
 export const CARD_MARKET_LAYERS: CardMarketLayer[] = [
   {
     cardId: "c1",
-    title: "드론·방산 쪽 시세",
-    blurb: "무기·드론 뉴스가 나오면 방산 관련 종목 분위기를 같이 봐요.",
-    orderbookSymbol: "012450",
+    title: "이 사안과 맞닿는 자산",
+    blurb: "드론·무기 네트워크 뉴스가 나오면 긴장·유가·금리가 흔들릴 수 있어요.",
     instruments: [
       {
-        symbol: "012450",
-        label: "한화에어로스페이스",
-        why: "방산·항공 쪽 대표 종목 중 하나예요.",
-        kind: "stock",
+        symbol: "VIXCLS",
+        label: "VIX",
+        why: "지정학 긴장이 불안 지수로 번지는지.",
+        kind: "index",
+        digits: 2,
       },
       {
-        symbol: "LMT",
-        label: "록히드마틴",
-        why: "미국 방산 큰 회사예요.",
-        kind: "stock",
+        symbol: "DCOILWTICO",
+        label: "WTI 원유",
+        why: "분쟁·제재 뉴스와 자주 같이 움직임.",
+        kind: "commodity",
+        unit: "$/bbl",
+        digits: 2,
       },
       {
-        symbol: "RTX",
-        label: "RTX",
-        why: "미사일·항공 엔진 쪽 회사예요.",
-        kind: "stock",
+        symbol: "DGS10",
+        label: "미 국채 10년",
+        why: "위험 자산 ↔ 안전자산 분위기.",
+        kind: "bond",
+        unit: "%",
+        digits: 2,
       },
     ],
   },
   {
     cardId: "c2",
-    title: "물류·해운 쪽 시세",
-    blurb: "카스피해·북남 회랑은 ‘물건이 어디로 지나가는지’ 이야기예요.",
-    orderbookSymbol: "011200",
+    title: "이 사안과 맞닿는 자산",
+    blurb: "카스피해·INSTC 교역망은 환율·달러·단기금리 흐름과 같이 봐요.",
     instruments: [
       {
-        symbol: "011200",
-        label: "HMM",
-        why: "한국 큰 해운 회사예요. 배 운임 분위기를 엿볼 때 봐요.",
-        kind: "stock",
+        symbol: "DEXKOUS",
+        label: "원·달러",
+        why: "한국 교역·수입 비용 쪽.",
+        kind: "fx",
+        unit: "원/$",
+        digits: 2,
       },
       {
-        symbol: "028260",
-        label: "삼성물산",
-        why: "건설·무역이 섞여 있어 교역 뉴스와 같이 보기도 해요.",
-        kind: "stock",
+        symbol: "DTWEXBGS",
+        label: "달러 지수",
+        why: "달러가 세면 교역·원자재 이야기가 달라짐.",
+        kind: "index",
+        digits: 2,
+      },
+      {
+        symbol: "DGS2",
+        label: "미 국채 2년",
+        why: "단기 자금·금리 기대.",
+        kind: "bond",
+        unit: "%",
+        digits: 2,
       },
     ],
   },
   {
     cardId: "c3",
-    title: "에너지·방산 시세",
-    blurb: "두 전쟁이 이어지면 기름값·방산 쪽 관심이 같이 커질 수 있어요.",
-    orderbookSymbol: "261220",
+    title: "이 사안과 맞닿는 자산",
+    blurb: "러우전·중동전이 이어지면 에너지 가격이 먼저 움직일 수 있어요.",
     instruments: [
       {
-        symbol: "261220",
-        label: "KODEX WTI원유선물",
-        why: "원유 가격 분위기를 따라가는 ETF예요. (선물을 직접 사는 건 아니에요)",
-        kind: "etf",
+        symbol: "DCOILWTICO",
+        label: "WTI 원유",
+        why: "미국 기준 유가.",
+        kind: "commodity",
+        unit: "$/bbl",
+        digits: 2,
       },
       {
-        symbol: "XLE",
-        label: "에너지 ETF (XLE)",
-        why: "석유·가스 회사들을 묶은 미국 ETF예요.",
-        kind: "etf",
+        symbol: "DCOILBRENTEU",
+        label: "브렌트 원유",
+        why: "유럽·중동 쪽 기준 유가.",
+        kind: "commodity",
+        unit: "$/bbl",
+        digits: 2,
       },
       {
-        symbol: "012450",
-        label: "한화에어로스페이스",
-        why: "방산 쪽 분위기 참고용이에요.",
-        kind: "stock",
+        symbol: "DHHNGSP",
+        label: "헨리허브 가스",
+        why: "천연가스 가격.",
+        kind: "commodity",
+        unit: "$/MMBtu",
+        digits: 2,
       },
     ],
   },
   {
     cardId: "c4",
-    title: "원유·해운 시세",
-    blurb: "그림자 함대 뉴스는 ‘제재 원유가 어떻게 움직이는지’와 맞닿아 있어요.",
-    orderbookSymbol: "261220",
+    title: "이 사안과 맞닿는 자산",
+    blurb: "그림자 함대·제재 우회 해운은 유가·달러와 맞닿아 있어요.",
     instruments: [
       {
-        symbol: "261220",
-        label: "KODEX WTI원유선물",
-        why: "원유 가격 분위기를 보는 창구예요.",
-        kind: "etf",
+        symbol: "DCOILWTICO",
+        label: "WTI 원유",
+        why: "제재 원유·운송 뉴스 옆.",
+        kind: "commodity",
+        unit: "$/bbl",
+        digits: 2,
       },
       {
-        symbol: "USO",
-        label: "원유 ETF (USO)",
-        why: "미국 쪽에서 보는 원유 관련 ETF예요.",
-        kind: "etf",
+        symbol: "DCOILBRENTEU",
+        label: "브렌트 원유",
+        why: "해상 원유 거래 기준.",
+        kind: "commodity",
+        unit: "$/bbl",
+        digits: 2,
       },
       {
-        symbol: "011200",
-        label: "HMM",
-        why: "배 운임·해운 분위기 참고용이에요.",
-        kind: "stock",
+        symbol: "DTWEXBGS",
+        label: "달러 지수",
+        why: "달러 강도가 원자재 달러 가격에 영향.",
+        kind: "index",
+        digits: 2,
       },
     ],
   },
   {
     cardId: "c5",
-    title: "호르무즈·유가 시세",
-    blurb: "해협이 막히면 기름값·운임이 먼저 흔들릴 수 있어요. 단정은 금지!",
-    orderbookSymbol: "261220",
+    title: "이 사안과 맞닿는 자산",
+    blurb: "호르무즈·바브엘만데브가 흔들리면 유가·금리가 먼저 보일 수 있어요.",
     instruments: [
       {
-        symbol: "261220",
-        label: "KODEX WTI원유선물",
-        why: "유가 분위기를 가장 직관적으로 봐요.",
-        kind: "etf",
+        symbol: "DCOILWTICO",
+        label: "WTI 원유",
+        why: "해협 리스크 → 유가.",
+        kind: "commodity",
+        unit: "$/bbl",
+        digits: 2,
       },
       {
-        symbol: "XLE",
-        label: "에너지 ETF (XLE)",
-        why: "에너지 회사들 묶음이에요.",
-        kind: "etf",
+        symbol: "DCOILBRENTEU",
+        label: "브렌트 원유",
+        why: "중동 공급 이슈와 자주 같이.",
+        kind: "commodity",
+        unit: "$/bbl",
+        digits: 2,
       },
       {
-        symbol: "011200",
-        label: "HMM",
-        why: "배가 우회하면 운임 이야기가 나와요.",
-        kind: "stock",
+        symbol: "DGS10",
+        label: "미 국채 10년",
+        why: "공급 충격이 금리 기대로 번지는지.",
+        kind: "bond",
+        unit: "%",
+        digits: 2,
       },
     ],
   },
   {
     cardId: "c6",
-    title: "희토류·LNG 시세",
-    blurb: "북극·그린란드·희토류는 ‘재료와 에너지 길’ 이야기예요.",
-    orderbookSymbol: "MP",
+    title: "이 사안과 맞닿는 자산",
+    blurb: "북극·그린란드·희토류는 가스·산업금속 가격 움직임으로 가늠해요.",
     instruments: [
       {
-        symbol: "MP",
-        label: "MP Materials",
-        why: "희토류 채굴 쪽 미국 회사예요.",
-        kind: "stock",
+        symbol: "DHHNGSP",
+        label: "헨리허브 가스",
+        why: "LNG·가스 쪽.",
+        kind: "commodity",
+        unit: "$/MMBtu",
+        digits: 2,
       },
       {
-        symbol: "LNG",
-        label: "Cheniere (LNG)",
-        why: "액화천연가스(LNG) 쪽 회사예요.",
-        kind: "stock",
+        symbol: "PCOPPUSDM",
+        label: "구리",
+        why: "산업·전기·공급망 온도계.",
+        kind: "commodity",
+        unit: "$/mt",
+        digits: 0,
       },
       {
-        symbol: "005930",
-        label: "삼성전자",
-        why: "희토류·자석은 전자·배터리 공급망과도 맞닿아요.",
-        kind: "stock",
+        symbol: "PALUMUSDM",
+        label: "알루미늄",
+        why: "산업금속·소재 공급망 참고.",
+        kind: "commodity",
+        unit: "$/mt",
+        digits: 0,
       },
     ],
   },
   {
     cardId: "c7",
-    title: "방산·한반도 관련 시세",
-    blurb: "북러 협력 뉴스는 방산·한반도 위험 프리미엄과 같이 보곤 해요.",
-    orderbookSymbol: "012450",
+    title: "이 사안과 맞닿는 자산",
+    blurb: "북러 협력·한반도 뉴스는 원화·공포지수·금리와 같이 봐요.",
     instruments: [
       {
-        symbol: "012450",
-        label: "한화에어로스페이스",
-        why: "방산 분위기 참고용이에요.",
-        kind: "stock",
+        symbol: "DEXKOUS",
+        label: "원·달러",
+        why: "한반도 긴장이 환율에 닿는지.",
+        kind: "fx",
+        unit: "원/$",
+        digits: 2,
       },
       {
-        symbol: "047810",
-        label: "한국항공우주",
-        why: "항공·방산 쪽 회사예요.",
-        kind: "stock",
-      },
-      {
-        symbol: "KOSPI",
-        label: "코스피",
-        why: "한반도 긴장이 시장 전체 기분에 닿는지 볼 때 써요.",
+        symbol: "VIXCLS",
+        label: "VIX",
+        why: "글로벌 위험 회피.",
         kind: "index",
+        digits: 2,
+      },
+      {
+        symbol: "DGS10",
+        label: "미 국채 10년",
+        why: "안전자산으로 돈이 몰리는지.",
+        kind: "bond",
+        unit: "%",
+        digits: 2,
       },
     ],
   },
@@ -224,7 +266,6 @@ export function getMarketLayerForCard(cardId: string | null | undefined) {
   return CARD_MARKET_LAYERS.find((l) => l.cardId === cardId) ?? null;
 }
 
-/** 카드에 강조할 국가 이름 (GeoJSON NAME/ADMIN 매칭용) */
 export const CARD_COUNTRIES: Record<string, string[]> = {
   c1: ["Russia", "Iran", "North Korea"],
   c2: [

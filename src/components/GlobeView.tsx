@@ -6,8 +6,13 @@ import type { Claim, ConfirmationTag, NetworkCard } from "@/types";
 import { CARD_COUNTRIES } from "@/data/marketLayers";
 import { intelTagColor } from "@/lib/verificationTiers";
 import {
+  allChokepointMarkers,
+} from "@/data/chokepoints";
+import {
   OCCUPIED_LABELS,
   OCCUPIED_UKRAINE_FEATURE,
+  WAR_FIRE_CARD_IDS,
+  warFireSitesForCard,
 } from "@/data/warSites";
 import {
   GOV_ADVANCE_ZONES,
@@ -64,7 +69,15 @@ type HtmlLabel = {
   lng: number;
   text: string;
   tag: ConfirmationTag | "focus";
-  marker?: "dot" | "fire" | "occupied" | "houthi" | "gov";
+  marker?:
+    | "dot"
+    | "fire"
+    | "occupied"
+    | "houthi"
+    | "gov"
+    | "chokepoint"
+    | "ship"
+    | "carrier";
 };
 
 type CountryFeat = {
@@ -145,6 +158,18 @@ function matchCountry(name: string, targets: string[]) {
     const tt = t.toLowerCase();
     return n === tt || n.includes(tt) || tt.includes(n);
   });
+}
+
+/** 공습·타격 = 실선, 교류·협력·공급 = 점선 */
+function isStrikeArcLabel(label: string) {
+  return /공습|타격|딥스트라이크|폭격|피격|요격|게란→|미사일 공격|드론 공격/.test(
+    label,
+  );
+}
+
+function arcDashed(layer: { label: string; dashed?: boolean }) {
+  if (typeof layer.dashed === "boolean") return layer.dashed;
+  return !isStrikeArcLabel(layer.label);
 }
 
 export default function GlobeView({
@@ -233,6 +258,16 @@ export default function GlobeView({
     !activeCard ||
     activeCard.id === "c8" ||
     activeCard.id === "c5";
+
+  /** 호르무즈·바브엘만데브 봉쇄 신호 (c5 또는 초크포인트 관련 고리) */
+  const showChokepoints =
+    !activeCard ||
+    activeCard.id === "c5" ||
+    activeClaim?.id?.startsWith("c5-") === true;
+
+  /** 러우·카스피해·이란·예멘 등 전쟁 타격지 → 화염 통일 */
+  const showWarFires =
+    !activeCard || WAR_FIRE_CARD_IDS.has(activeCard.id);
 
   const yemenFocus =
     activeCard?.id === "c8" ||
@@ -331,14 +366,46 @@ export default function GlobeView({
       lng: number,
       text: string,
       tag: ConfirmationTag | "focus",
-      marker?: "dot" | "fire" | "occupied" | "houthi" | "gov",
+      marker?:
+        | "dot"
+        | "fire"
+        | "occupied"
+        | "houthi"
+        | "gov"
+        | "chokepoint"
+        | "ship"
+        | "carrier",
     ) => {
       htmlLabels.push({ lat, lng, text, tag, marker });
     };
 
+    if (showChokepoints) {
+      for (const m of allChokepointMarkers()) {
+        const marker =
+          m.kind === "block"
+            ? "chokepoint"
+            : m.kind === "carrier"
+              ? "carrier"
+              : "ship";
+        pushLabel(m.lat, m.lng, m.text, "보도", marker);
+      }
+    }
+
     if (showOccupied) {
       for (const o of OCCUPIED_LABELS) {
         pushLabel(o.lat, o.lng, o.text, "보도", "occupied");
+      }
+    }
+
+    /** 장면 레이어에 화염이 없어도, 전쟁 카드/전체 맵에서는 타격지 화염을 깐다 */
+    if (showWarFires) {
+      const fires = warFireSitesForCard(activeCard?.id ?? null);
+      const seen = new Set<string>();
+      for (const s of fires) {
+        const key = `${s.at[0].toFixed(3)},${s.at[1].toFixed(3)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        pushLabel(s.at[1], s.at[0], s.label, s.tag, "fire");
       }
     }
 
@@ -364,7 +431,7 @@ export default function GlobeView({
               label: s.label,
               tag: s.tag,
               active: true,
-              dash: true,
+              dash: false,
               alt: 0.42,
             });
           }
@@ -409,6 +476,14 @@ export default function GlobeView({
     if (scene) {
       for (const layer of scene.layers) {
         if (layer.type === "point" && layer.at) {
+          // 해협 봉쇄·상선·항모는 showChokepoints HTML로만 (중복 점 방지)
+          if (
+            layer.marker === "chokepoint" ||
+            layer.marker === "ship" ||
+            layer.marker === "carrier"
+          ) {
+            continue;
+          }
           const isFire = layer.marker === "fire";
           if (!isFire) {
             points.push({
@@ -438,7 +513,7 @@ export default function GlobeView({
             label: layer.label,
             tag: layer.tag,
             active: true,
-            dash: layer.tag !== "확립" && layer.tag !== "보도",
+            dash: arcDashed(layer),
             alt: 0.38,
           });
         } else if (layer.type === "line" && layer.path && layer.path.length > 1) {
@@ -453,7 +528,7 @@ export default function GlobeView({
               label: layer.label,
               tag: layer.tag,
               active: true,
-              dash: layer.tag !== "확립" && layer.tag !== "보도",
+              dash: arcDashed(layer),
               alt: 0.3,
             });
           }
@@ -498,6 +573,8 @@ export default function GlobeView({
     dimOthers,
     showOccupied,
     showYemenFront,
+    showWarFires,
+    showChokepoints,
     yemenFocus,
   ]);
 
@@ -603,10 +680,10 @@ export default function GlobeView({
             const c = intelTagColor(a.tag, a.active);
             return [c, c];
           }}
-          arcDashLength={(d: object) => ((d as ArcDatum).dash ? 0.32 : 0.88)}
-          arcDashGap={(d: object) => ((d as ArcDatum).dash ? 0.12 : 0.04)}
+          arcDashLength={(d: object) => ((d as ArcDatum).dash ? 0.22 : 0.95)}
+          arcDashGap={(d: object) => ((d as ArcDatum).dash ? 0.16 : 0.02)}
           arcDashAnimateTime={(d: object) =>
-            (d as ArcDatum).dash ? 2000 : 3400
+            (d as ArcDatum).dash ? 2800 : 3600
           }
           arcLabel={(d: object) => (d as ArcDatum).label}
           htmlElementsData={htmlLabels}
@@ -616,10 +693,58 @@ export default function GlobeView({
             const m = (d as HtmlLabel).marker;
             if (m === "fire") return 0.05;
             if (m === "occupied") return 0.028;
+            if (m === "chokepoint") return 0.04;
+            if (m === "ship") return 0.032;
+            if (m === "carrier") return 0.038;
             return 0.13;
           }}
           htmlElement={(d: object) => {
             const item = d as HtmlLabel;
+            if (item.marker === "chokepoint") {
+              const wrap = document.createElement("div");
+              wrap.className = "globe-chokepoint";
+              wrap.title = item.text;
+              const core = document.createElement("span");
+              core.className = "choke-core";
+              core.setAttribute("aria-hidden", "true");
+              const ring = document.createElement("span");
+              ring.className = "choke-ring";
+              ring.setAttribute("aria-hidden", "true");
+              const caption = document.createElement("span");
+              caption.className = "choke-caption";
+              caption.textContent = item.text;
+              wrap.append(ring, core, caption);
+              return wrap;
+            }
+            if (item.marker === "carrier") {
+              const wrap = document.createElement("div");
+              wrap.className = "globe-carrier";
+              wrap.title = item.text;
+              const icon = document.createElement("span");
+              icon.className = "carrier-icon";
+              icon.setAttribute("aria-hidden", "true");
+              const island = document.createElement("span");
+              island.className = "carrier-island";
+              icon.append(island);
+              const caption = document.createElement("span");
+              caption.className = "carrier-caption";
+              caption.textContent = item.text;
+              wrap.append(icon, caption);
+              return wrap;
+            }
+            if (item.marker === "ship") {
+              const wrap = document.createElement("div");
+              wrap.className = "globe-ship";
+              wrap.title = item.text;
+              const icon = document.createElement("span");
+              icon.className = "ship-icon";
+              icon.setAttribute("aria-hidden", "true");
+              const caption = document.createElement("span");
+              caption.className = "ship-caption";
+              caption.textContent = "상선";
+              wrap.append(icon, caption);
+              return wrap;
+            }
             if (item.marker === "fire") {
               const stamp = document.createElement("div");
               stamp.className = "globe-blast-stamp intel";
@@ -641,7 +766,24 @@ export default function GlobeView({
               core.className = "blast-core";
               const ember = document.createElement("span");
               ember.className = "blast-ember";
-              blast.append(smokeL, smokeC, smokeR, flash, core, ember);
+
+              const tongues = document.createElement("span");
+              tongues.className = "fire-tongues";
+              for (const name of ["tongue-a", "tongue-b", "tongue-c"]) {
+                const t = document.createElement("span");
+                t.className = `tongue ${name}`;
+                tongues.append(t);
+              }
+
+              blast.append(
+                smokeL,
+                smokeC,
+                smokeR,
+                flash,
+                core,
+                ember,
+                tongues,
+              );
 
               const caption = document.createElement("span");
               caption.className = "blast-caption";
@@ -674,10 +816,14 @@ export default function GlobeView({
       )}
       <div className="globe-legend" aria-hidden>
         <span className="lg block">해당국 · 미세 계단 단</span>
+        <span className="lg choke">네온 점 · 해협 막힘</span>
+        <span className="lg ship">상선 · 양측 대기</span>
+        <span className="lg carrier">미 항모 · 아라비아해</span>
         <span className="lg occupied">주황 · 러 점령지</span>
         <span className="lg houthi">빨강 확장 · 후티 연안</span>
         <span className="lg gov">초록 · 정부군 반격</span>
-        <span className="lg fire">폭발 · 사우디·공습 타격</span>
+        <span className="lg arrow">점선 · 교류·협력</span>
+        <span className="lg fire">폭발→연기→불혀 · 타격지</span>
       </div>
       {showYemenFront && (
         <div className="yemen-expand-hud" aria-hidden>

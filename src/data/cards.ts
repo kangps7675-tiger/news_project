@@ -1,6 +1,7 @@
 import type { NetworkCard } from "@/types";
 import {
   CASPIAN_STRIKE,
+  IRAN_STRIKE_SITES,
   RU_ON_UA_SITES,
   UA_ON_OCCUPIED_SITES,
   UA_ON_RU_SITES,
@@ -378,6 +379,7 @@ export const cards: NetworkCard[] = [
       { lat: 50.45, lng: 30.523, label: "키이우" },
       { lat: 55.788, lng: 52.052, label: "옐라부가" },
       { lat: 45.85, lng: 48.55, label: "카스피해·볼가 하구" },
+      { lat: 33.725, lng: 51.726, label: "나타즈" },
       { lat: 45.049, lng: 35.379, label: "페오도시야(점령)" },
     ],
     claims: [
@@ -526,12 +528,9 @@ export const cards: NetworkCard[] = [
             ...sitesToFireLayers(
               UA_ON_RU_SITES.filter((s) => s.id === "yelabuga"),
             ),
-            {
-              type: "point",
-              label: "이스파한 HESA(원산지)",
-              tag: "분석",
-              at: [51.55, 32.85],
-            },
+            ...sitesToFireLayers(
+              IRAN_STRIKE_SITES.filter((s) => s.id === "isfahan-hesa"),
+            ),
           ],
           callouts: [
             {
@@ -578,6 +577,9 @@ export const cards: NetworkCard[] = [
             ...sitesToFireLayers(
               UA_ON_RU_SITES.filter((s) => s.id === "yelabuga"),
             ),
+            ...sitesToFireLayers(
+              IRAN_STRIKE_SITES.filter((s) => s.id === "isfahan-hesa"),
+            ),
           ],
           callouts: [
             {
@@ -591,29 +593,43 @@ export const cards: NetworkCard[] = [
       },
       {
         id: "c3-iran-war",
-        text: "이란전 배경: 2026년 2월 말부터 미국·이스라엘이 이란(이스파한 HESA 등)을 공격했다는 보도 — 우크라이나 타격과 별개",
+        text: "이란전: 미국·이스라엘이 나타즈·포르도·이스파한(핵단지·HESA) 등 이란 본토를 타격했다는 보도 — 우크라이나 타격과 별개",
         tag: "보도",
         grade: "B",
-        sources: [{ id: "crs-hormuz", label: "미 의회조사국 등" }],
-        caveat: "우크라이나 소행으로 읽히지 않게. 폭발 마커는 미·이스라엘 작전 보도 권역",
+        sources: [
+          {
+            id: "ap-iran-nuclear-damage",
+            label: "AP",
+            url: "https://apnews.com/article/mideast-wars-iran-satellite-photos-nuclear-sites-us-da82442dd4d526e69a4f1e77a72f3dfd",
+          },
+          {
+            id: "reuters-natanz-2026",
+            label: "로이터",
+            url: "https://www.reuters.com/world/china/iaea-confirms-entrances-irans-natanz-enrichment-plant-were-bombed-2026-03-03/",
+          },
+          { id: "crs-hormuz", label: "미 의회조사국 등" },
+        ],
+        caveat:
+          "우크라이나 소행으로 읽히지 않게. 화염 마커는 미·이스라엘 작전 보도 권역(공개 좌표 범위)",
         scene: {
           asOf: "2026-03",
-          camera: { lat: 32.85, lng: 51.55, altitude: 1.35 },
+          camera: { lat: 33.5, lng: 51.5, altitude: 1.15 },
           layers: [
+            ...sitesToFireLayers(IRAN_STRIKE_SITES),
             {
-              type: "point",
-              label: "이스파한 HESA (미·이스라엘)",
+              type: "arc",
+              label: "미·이스라엘→이란 (보도)",
               tag: "보도",
-              at: [51.55, 32.85],
-              marker: "fire",
+              from: [34.8, 32.1],
+              to: [51.726, 33.725],
             },
           ],
           callouts: [
             {
-              anchor: [51.55, 32.85],
-              title: "샤헤드 원산 공장 피격",
+              anchor: [51.726, 33.725],
+              title: "이란 본토 타격",
               tag: "보도",
-              note: "미·이스라엘 작전으로 보도. 우크 카스피해 타격과 구분",
+              note: "나타즈·포르도·이스파한 등. 우크 카스피해 타격과 구분",
             },
           ],
         },
@@ -642,6 +658,11 @@ export const cards: NetworkCard[] = [
               from: [37.6, 55.75],
               to: [51.4, 35.7],
             },
+            ...sitesToFireLayers(
+              IRAN_STRIKE_SITES.filter((s) =>
+                ["isfahan-hesa", "tehran-military"].includes(s.id),
+              ),
+            ),
           ],
           callouts: [
             {
@@ -825,12 +846,15 @@ export const cards: NetworkCard[] = [
       "후티 봉쇄",
       "전쟁위험 보험료",
       "프로젝트 프리덤",
+      "미 항모",
+      "아라비아해",
     ],
     doNotAssert: [
       "통행 수치는 하나로 단정하지 않는다",
       "폐쇄는 완전 봉쇄가 아니라 통행 급감과 호위 통행이 섞인 상태다",
       "후티·이란 배후 관계를 사실처럼 쓰지 않는다",
       "브렌트 가격 수준을 카드에 고정하지 않는다",
+      "항모 함명·정확한 좌표를 단정하지 않는다",
     ],
     marketTouchpoints: [
       "원유·LNG",
@@ -845,6 +869,8 @@ export const cards: NetworkCard[] = [
       { lat: 26.5, lng: 56.5, label: "호르무즈" },
       { lat: 12.65, lng: 43.4, label: "페림섬" },
       { lat: 24.1, lng: 38.1, label: "얀부" },
+      { lat: 21.4, lng: 62.6, label: "미 항모 (북)" },
+      { lat: 18.9, lng: 65.1, label: "미 항모 (남)" },
     ],
     claims: [
       {
@@ -911,13 +937,42 @@ export const cards: NetworkCard[] = [
         caveat: "통행 수치는 출처·기준선이 달라 씬에 고정 숫자를 넣지 않는다",
         scene: {
           asOf: "2026-09-20",
-          camera: { lat: 26.5, lng: 56.5, altitude: 1.0 },
+          camera: { lat: 22.5, lng: 60.0, altitude: 1.35 },
           layers: [
             {
               type: "point",
-              label: "호르무즈",
+              label: "호르무즈 통행 급감",
               tag: "보도",
-              at: [56.5, 26.5],
+              at: [56.25, 26.56],
+              marker: "chokepoint",
+            },
+            {
+              type: "point",
+              label: "상선 (만 안쪽)",
+              tag: "보도",
+              at: [55.35, 26.95],
+              marker: "ship",
+            },
+            {
+              type: "point",
+              label: "상선 (오만만)",
+              tag: "보도",
+              at: [57.55, 25.55],
+              marker: "ship",
+            },
+            {
+              type: "point",
+              label: "미 항모 (북)",
+              tag: "보도",
+              at: [62.6, 21.4],
+              marker: "carrier",
+            },
+            {
+              type: "point",
+              label: "미 항모 (남)",
+              tag: "보도",
+              at: [65.1, 18.9],
+              marker: "carrier",
             },
             {
               type: "line",
@@ -937,6 +992,12 @@ export const cards: NetworkCard[] = [
               title: "호르무즈 통행 급감",
               tag: "보도",
               note: "'폐쇄'는 완전 봉쇄가 아니라 통행 급감·호위 통행이 섞인 상태",
+            },
+            {
+              anchor: [63.5, 20.2],
+              title: "아라비아해 미 항모 2척",
+              tag: "보도",
+              note: "배치 대략치. 함명·정확한 좌표는 단정하지 않는다",
             },
           ],
         },
@@ -958,6 +1019,27 @@ export const cards: NetworkCard[] = [
           layers: [
             {
               type: "point",
+              label: "바브엘만데브 조임",
+              tag: "확립",
+              at: [43.33, 12.58],
+              marker: "chokepoint",
+            },
+            {
+              type: "point",
+              label: "상선 (홍해)",
+              tag: "보도",
+              at: [42.55, 13.55],
+              marker: "ship",
+            },
+            {
+              type: "point",
+              label: "상선 (아덴만)",
+              tag: "보도",
+              at: [44.65, 11.95],
+              marker: "ship",
+            },
+            {
+              type: "point",
               label: "페림섬",
               tag: "확립",
               at: [43.4, 12.65],
@@ -967,12 +1049,6 @@ export const cards: NetworkCard[] = [
               label: "모카항",
               tag: "확립",
               at: [43.25, 13.32],
-            },
-            {
-              type: "point",
-              label: "바브엘만데브",
-              tag: "확립",
-              at: [43.3, 12.6],
             },
           ],
           callouts: [

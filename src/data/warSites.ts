@@ -1,5 +1,6 @@
 import type { ConfirmationTag, GlobeLayer } from "@/types";
 import occupiedUkraine from "./occupiedUkraine.json";
+import { SAUDI_YEMEN_STRIKES } from "./yemenFront";
 
 /** 보도·확인된 타격/전장 좌표. at = [lng, lat] */
 export type WarSite = {
@@ -8,7 +9,13 @@ export type WarSite = {
   /** [lng, lat] */
   at: [number, number];
   tag: ConfirmationTag;
-  side: "ru_on_ua" | "ua_on_ru" | "ua_on_occupied" | "ua_caspian" | "other";
+  side:
+    | "ru_on_ua"
+    | "ua_on_ru"
+    | "ua_on_occupied"
+    | "ua_caspian"
+    | "on_iran"
+    | "other";
   note: string;
 };
 
@@ -275,6 +282,53 @@ export const CASPIAN_STRIKE: WarSite = {
   note: "이란 선박 Anna 등. 볼가 하구 ~5km 정박 중 피격(BBC·로이터)",
 };
 
+/**
+ * 이란전 타격 지점 (미·이스라엘 작전 보도 권역).
+ * 우크라이나 소행으로 읽히지 않게 — 별도 side.
+ */
+export const IRAN_STRIKE_SITES: WarSite[] = [
+  {
+    id: "natanz",
+    label: "나타즈",
+    at: [51.726, 33.725],
+    tag: "확립",
+    side: "on_iran",
+    note: "우라늄 농축. 미·이스라엘 타격 보도(IAEA·AP 등)",
+  },
+  {
+    id: "fordow",
+    label: "포르도",
+    at: [50.995, 34.885],
+    tag: "확립",
+    side: "on_iran",
+    note: "지하 농축. 미 벙커버스터 타격 보도",
+  },
+  {
+    id: "isfahan-nuclear",
+    label: "이스파한 핵단지",
+    at: [51.82, 32.58],
+    tag: "확립",
+    side: "on_iran",
+    note: "변환·연료 시설. 미·이스라엘 타격 보도",
+  },
+  {
+    id: "isfahan-hesa",
+    label: "이스파한 HESA",
+    at: [51.55, 32.85],
+    tag: "보도",
+    side: "on_iran",
+    note: "샤헤드 관련 항공산업. 미·이스라엘 작전 보도",
+  },
+  {
+    id: "tehran-military",
+    label: "테헤란 일대 군사·지휘",
+    at: [51.42, 35.72],
+    tag: "보도",
+    side: "on_iran",
+    note: "수도 권역 타격·지휘부 관련 보도. 개별 시설 GPS는 공개 범위만",
+  },
+];
+
 export function sitesToFireLayers(sites: WarSite[]): GlobeLayer[] {
   return sites.map((s) => ({
     type: "point" as const,
@@ -284,3 +338,51 @@ export function sitesToFireLayers(sites: WarSite[]): GlobeLayer[] {
     marker: "fire" as const,
   }));
 }
+
+/** 카드/전역에 깔 전쟁 화염 지점 */
+export function warFireSitesForCard(
+  cardId: string | null | undefined,
+): WarSite[] {
+  const yemenAsWar: WarSite[] = SAUDI_YEMEN_STRIKES.map((s) => ({
+    id: s.id,
+    label: s.label,
+    at: s.at,
+    tag: s.tag,
+    side: "other" as const,
+    note: "예멘 전선 공습 보도 권역",
+  }));
+
+  if (!cardId) {
+    return [
+      ...RU_ON_UA_SITES,
+      ...UA_ON_RU_SITES,
+      ...UA_ON_OCCUPIED_SITES,
+      CASPIAN_STRIKE,
+      ...IRAN_STRIKE_SITES,
+      ...yemenAsWar,
+    ];
+  }
+  switch (cardId) {
+    case "c1":
+      return [
+        ...UA_ON_RU_SITES.filter((s) => s.id === "yelabuga"),
+        ...RU_ON_UA_SITES.filter((s) => s.id === "kyiv"),
+        ...IRAN_STRIKE_SITES.filter((s) => s.id === "isfahan-hesa"),
+      ];
+    case "c3":
+      return [
+        ...RU_ON_UA_SITES,
+        ...UA_ON_RU_SITES,
+        ...UA_ON_OCCUPIED_SITES,
+        CASPIAN_STRIKE,
+        ...IRAN_STRIKE_SITES,
+      ];
+    case "c5":
+    case "c8":
+      return [...IRAN_STRIKE_SITES, ...yemenAsWar];
+    default:
+      return [];
+  }
+}
+
+export const WAR_FIRE_CARD_IDS = new Set(["c1", "c3", "c5", "c8"]);

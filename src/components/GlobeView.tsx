@@ -173,23 +173,13 @@ function expandGeometry(geometry: unknown, factor: number): unknown {
   return geometry;
 }
 
-/** 바깥 번짐 + 영토 안 번짐 */
+/** 바깥 번짐 1장만 (성능: 예전엔 3장×전세계 국가) */
 function makeBleedCopies(feat: CountryFeat): CountryFeat[] {
   return [
     {
       ...feat,
-      geometry: expandGeometry(feat.geometry, 0.88),
-      __bleed: 3,
-    },
-    {
-      ...feat,
-      geometry: expandGeometry(feat.geometry, 1.018),
+      geometry: expandGeometry(feat.geometry, 1.03),
       __bleed: 1,
-    },
-    {
-      ...feat,
-      geometry: expandGeometry(feat.geometry, 1.045),
-      __bleed: 2,
     },
   ];
 }
@@ -345,11 +335,12 @@ export default function GlobeView({
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [countries, setCountries] = useState<CountryFeat[]>([]);
   const [hoveredKey, setHoveredKey] = useState("");
-  /** 후티 연안 확장 단계 (0…N-1 누적) */
-  const [houthiStage, setHouthiStage] = useState(0);
+  /** 후티 연안 확장 단계 (0…N-1 누적) — c8 포커스일 때만 애니 */
+  const [houthiStage, setHouthiStage] = useState(
+    YEMEN_EXPAND_STAGE_COUNT - 1,
+  );
   /** 정부군 반격 구역 단계 */
-  const [govStage, setGovStage] = useState(0);
-  const [expandPulse, setExpandPulse] = useState(0);
+  const [govStage, setGovStage] = useState(YEMEN_GOV_STAGE_COUNT - 1);
 
   useEffect(() => {
     let cancelled = false;
@@ -405,30 +396,27 @@ export default function GlobeView({
   }, [size.w, size.h, countries.length]);
 
   const activeCountryNames = useMemo(() => {
-    if (!activeCard) return Object.values(CARD_COUNTRIES).flat();
+    // L0에서 전 카드 국가를 한꺼번에 올리면 폴리곤·번짐이 폭증 → 카드 선택 시에만
+    if (!activeCard) return [];
     return CARD_COUNTRIES[activeCard.id] || [];
   }, [activeCard]);
 
   const showOccupied =
-    !activeCard ||
-    activeCard.id === "c1" ||
-    activeCard.id === "c3" ||
-    (CARD_COUNTRIES[activeCard.id] || []).includes("Ukraine");
+    activeCard?.id === "c1" ||
+    activeCard?.id === "c3" ||
+    (!!activeCard &&
+      (CARD_COUNTRIES[activeCard.id] || []).includes("Ukraine"));
 
+  /** 예멘 확장: c5/c8만. L0에서는 끔 */
   const showYemenFront =
-    !activeCard ||
-    activeCard.id === "c8" ||
-    activeCard.id === "c5";
+    activeCard?.id === "c8" || activeCard?.id === "c5";
 
-  /** 호르무즈·바브엘만데브 봉쇄 신호 (c5 또는 초크포인트 관련 고리) */
   const showChokepoints =
-    !activeCard ||
-    activeCard.id === "c5" ||
+    activeCard?.id === "c5" ||
     activeClaim?.id?.startsWith("c5-") === true;
 
-  /** 러우·카스피해·이란·예멘 등 전쟁 타격지 → 화염 통일 */
-  const showWarFires =
-    !activeCard || WAR_FIRE_CARD_IDS.has(activeCard.id);
+  /** 전쟁 화염: 카드 선택 시에만 (L0 전체 덤프 금지) */
+  const showWarFires = !!activeCard && WAR_FIRE_CARD_IDS.has(activeCard.id);
 
   const yemenFocus =
     activeCard?.id === "c8" ||
@@ -436,9 +424,13 @@ export default function GlobeView({
 
   useEffect(() => {
     if (!showYemenFront) {
-      setHouthiStage(0);
-      setGovStage(0);
-      setExpandPulse(0);
+      setHouthiStage(YEMEN_EXPAND_STAGE_COUNT - 1);
+      setGovStage(YEMEN_GOV_STAGE_COUNT - 1);
+      return;
+    }
+    if (!yemenFocus) {
+      setHouthiStage(YEMEN_EXPAND_STAGE_COUNT - 1);
+      setGovStage(YEMEN_GOV_STAGE_COUNT - 1);
       return;
     }
     setHouthiStage(0);
@@ -446,7 +438,6 @@ export default function GlobeView({
     let tick = 0;
     const id = window.setInterval(() => {
       tick += 1;
-      setExpandPulse((p) => (p + 1) % 48);
       setHouthiStage((s) =>
         s < YEMEN_EXPAND_STAGE_COUNT - 1 ? s + 1 : s,
       );
@@ -455,12 +446,12 @@ export default function GlobeView({
           s < YEMEN_GOV_STAGE_COUNT - 1 ? s + 1 : s,
         );
       }
-      if (tick > 0 && tick % (YEMEN_EXPAND_STAGE_COUNT + 5) === 0) {
+      if (tick > 0 && tick % (YEMEN_EXPAND_STAGE_COUNT + 6) === 0) {
         setHouthiStage(0);
         setGovStage(0);
         tick = 0;
       }
-    }, yemenFocus ? 850 : 1300);
+    }, 1600);
     return () => window.clearInterval(id);
   }, [showYemenFront, yemenFocus, activeCard?.id, activeClaim?.id]);
 
@@ -481,9 +472,15 @@ export default function GlobeView({
       if (active) step += 1;
       return feat;
     });
-    const extras: CountryFeat[] = [];
+
+    const out: CountryFeat[] = [];
+    for (const feat of base) {
+      out.push(feat);
+      if (feat.__active) out.push(...makeBleedCopies(feat));
+    }
+
     if (showOccupied) {
-      const occ: CountryFeat = {
+      out.push({
         type: "Feature",
         properties: {
           NAME: "Occupied Ukraine",
@@ -495,46 +492,23 @@ export default function GlobeView({
         __occupied: true,
         __step: 0,
         __bleed: 0,
-      };
-      extras.push(occ, ...makeBleedCopies(occ));
+      } as CountryFeat);
     }
+
     if (showYemenFront) {
       for (const z of HOUTHI_EXPAND_STAGES) {
         if ((z.__stage ?? z.properties.stage) <= houthiStage) {
-          const feat = { ...(z as YemenZoneFeat), __bleed: 0 } as CountryFeat;
-          extras.push(feat, ...makeBleedCopies(feat));
+          out.push({ ...(z as YemenZoneFeat), __bleed: 0 } as CountryFeat);
         }
       }
       for (const z of GOV_ADVANCE_ZONES) {
         if ((z.__stage ?? z.properties.stage) <= govStage) {
-          const feat = { ...(z as YemenZoneFeat), __bleed: 0 } as CountryFeat;
-          extras.push(feat, ...makeBleedCopies(feat));
+          out.push({ ...(z as YemenZoneFeat), __bleed: 0 } as CountryFeat);
         }
       }
     }
 
-    const withBleed: CountryFeat[] = [];
-    for (const feat of base) {
-      withBleed.push(feat);
-      if (feat.__active) {
-        withBleed.push(...makeBleedCopies(feat));
-      } else {
-        // 비활성국: 영토 안 번짐 + 바깥 옅은 번짐
-        withBleed.push(
-          {
-            ...feat,
-            geometry: expandGeometry(feat.geometry, 0.9),
-            __bleed: 3,
-          },
-          {
-            ...feat,
-            geometry: expandGeometry(feat.geometry, 1.028),
-            __bleed: 2,
-          },
-        );
-      }
-    }
-    return [...withBleed, ...extras];
+    return out;
   }, [
     countries,
     activeCountryNames,
@@ -589,10 +563,14 @@ export default function GlobeView({
     if (showWarFires) {
       const fires = warFireSitesForCard(activeCard?.id ?? null);
       const seen = new Set<string>();
+      // HTML 화염은 비쌈 → 카드당 최대 18개
+      let n = 0;
       for (const s of fires) {
+        if (n >= 18) break;
         const key = `${s.at[0].toFixed(3)},${s.at[1].toFixed(3)}`;
         if (seen.has(key)) continue;
         seen.add(key);
+        n += 1;
         pushLabel(s.at[1], s.at[0], s.label, s.tag, "fire");
       }
     }
@@ -829,7 +807,10 @@ export default function GlobeView({
           backgroundColor="#020406"
           showAtmosphere
           atmosphereColor="#ff3b2f"
-          atmosphereAltitude={0.18}
+          atmosphereAltitude={0.12}
+          rendererConfig={{ antialias: false, alpha: false, powerPreference: "high-performance" }}
+          waitForGlobeReady
+          animateIn={false}
           polygonsData={polygonData}
           polygonAltitude={(d: object) => {
             const feat = d as CountryFeat;
@@ -838,14 +819,7 @@ export default function GlobeView({
             if (bleed === 3) return POLY_ALT_BLEED_IN;
             if (bleed === 1) return POLY_ALT_BLEED_1;
             if (bleed === 2) return POLY_ALT_BLEED_2;
-            if (kind === "houthi" || kind === "gov") {
-              const newest =
-                kind === "houthi"
-                  ? (feat.__stage ?? 0) === houthiStage
-                  : (feat.__stage ?? 0) === govStage;
-              const pulse = newest ? (expandPulse % 8) * 0.00035 : 0;
-              return POLY_ALT_YEMEN + pulse;
-            }
+            if (kind === "houthi" || kind === "gov") return POLY_ALT_YEMEN;
             if (kind === "occupied") return POLY_ALT_OCCUPIED;
             if (kind === "idle") return POLY_ALT_IDLE;
             const step = feat.__step ?? 0;
@@ -863,18 +837,15 @@ export default function GlobeView({
           polygonStrokeColor={(d: object) =>
             bleedPolygon(polyKind(d as CountryFeat)).stroke
           }
-          polygonsTransitionDuration={480}
+          polygonsTransitionDuration={0}
           onPolygonHover={(d: object | null) => {
             const feat = d as CountryFeat | null;
-            if (feat?.__occupied || feat?.__yemen || (feat?.__bleed ?? 0) > 0) {
-              if ((feat?.__bleed ?? 0) > 0 && !feat?.__occupied && !feat?.__yemen) {
-                setHoveredKey(countryKey(feat));
-                return;
-              }
-              setHoveredKey("");
+            if (!feat || feat.__occupied || feat.__yemen || (feat.__bleed ?? 0) > 0) {
+              if (hoveredKey) setHoveredKey("");
               return;
             }
-            setHoveredKey(countryKey(feat));
+            const key = countryKey(feat);
+            if (key !== hoveredKey) setHoveredKey(key);
           }}
           pointsData={points}
           pointLat="lat"
@@ -970,10 +941,7 @@ export default function GlobeView({
               const flame = document.createElement("span");
               flame.className = "strike-flame";
               flame.setAttribute("aria-hidden", "true");
-              const caption = document.createElement("span");
-              caption.className = "strike-caption";
-              caption.textContent = item.text;
-              wrap.append(flame, caption);
+              wrap.append(flame);
               return wrap;
             }
             if (item.marker === "occupied") {

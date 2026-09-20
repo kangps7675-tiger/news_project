@@ -4,15 +4,25 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { Claim, ConfirmationTag, NetworkCard } from "@/types";
 import { CARD_COUNTRIES } from "@/data/marketLayers";
+import { intelTagColor } from "@/lib/verificationTiers";
 import {
-  intelCountryColors,
-  intelTagColor,
-} from "@/lib/verificationTiers";
+  OCCUPIED_LABELS,
+  OCCUPIED_UKRAINE_FEATURE,
+} from "@/data/warSites";
+import {
+  GOV_ADVANCE_ZONES,
+  HOUTHI_EXPAND_STAGES,
+  SAUDI_YEMEN_STRIKES,
+  YEMEN_EXPAND_STAGE_COUNT,
+  YEMEN_FRONT_LABELS,
+  YEMEN_GOV_STAGE_COUNT,
+  type YemenZoneFeat,
+} from "@/data/yemenFront";
 
 const Globe = dynamic(() => import("react-globe.gl"), {
   ssr: false,
   loading: () => (
-    <div className="globe-placeholder">벡터 지도를 그리는 중이에요…</div>
+    <div className="globe-placeholder">인텔 맵을 그리는 중이에요…</div>
   ),
 });
 
@@ -24,8 +34,6 @@ type Props = {
   activeCard: NetworkCard | null;
   activeClaim: Claim | null;
   dimOthers: boolean;
-  /** 인텔 모드: 레이어를 알록달록하게 */
-  intelMode?: boolean;
 };
 
 type PointDatum = {
@@ -36,6 +44,7 @@ type PointDatum = {
   active: boolean;
   size: number;
   alt: number;
+  marker?: "dot" | "fire";
 };
 
 type ArcDatum = {
@@ -55,70 +64,79 @@ type HtmlLabel = {
   lng: number;
   text: string;
   tag: ConfirmationTag | "focus";
+  marker?: "dot" | "fire" | "occupied" | "houthi" | "gov";
 };
 
 type CountryFeat = {
   type: string;
-  properties: { NAME?: string; ADMIN?: string; ISO_A3?: string };
+  properties: { NAME?: string; ADMIN?: string; ISO_A3?: string; name?: string };
   geometry: unknown;
   __active?: boolean;
+  __occupied?: boolean;
+  /** 해당국끼리 미세 단차 (계단식) */
+  __step?: number;
+  __yemen?: boolean;
+  __side?: "houthi" | "gov";
+  __stage?: number;
 };
 
-const POLY_ALT_BASE = 0.0035;
-const POLY_ALT_ACTIVE = 0.006;
-const POLY_ALT_HOVER = 0.014;
+/** 거의 붙음 → 해당국만 아주 살짝 단을 올려 계단 느낌 */
+const POLY_ALT_IDLE = 0.0006;
+const POLY_ALT_STEP_BASE = 0.0032;
+const POLY_ALT_STEP_GAP = 0.00055;
+const POLY_ALT_HOVER_BUMP = 0.0014;
+const POLY_ALT_OCCUPIED = 0.0048;
+const POLY_ALT_YEMEN = 0.0065;
+
+/** 해당 국가 / 점령 / 후티·정부 구역 */
+function bleedPolygon(
+  kind: "hover" | "active" | "idle" | "occupied" | "houthi" | "gov",
+) {
+  if (kind === "houthi") {
+    return {
+      cap: "rgba(210, 40, 55, 0.62)",
+      side: "rgba(140, 10, 25, 0.82)",
+      stroke: "rgba(255, 120, 90, 0.95)",
+    };
+  }
+  if (kind === "gov") {
+    return {
+      cap: "rgba(40, 140, 90, 0.55)",
+      side: "rgba(20, 90, 55, 0.78)",
+      stroke: "rgba(120, 230, 170, 0.92)",
+    };
+  }
+  if (kind === "occupied") {
+    return {
+      cap: "rgba(180, 70, 20, 0.78)",
+      side: "rgba(120, 40, 10, 0.85)",
+      stroke: "rgba(255, 200, 80, 0.95)",
+    };
+  }
+  if (kind === "hover") {
+    return {
+      cap: "rgba(255, 48, 48, 0.72)",
+      side: "rgba(180, 16, 16, 0.55)",
+      stroke: "rgba(255, 160, 140, 0.95)",
+    };
+  }
+  if (kind === "active") {
+    return {
+      cap: "rgba(220, 28, 28, 0.42)",
+      side: "rgba(90, 8, 8, 0.88)",
+      stroke: "rgba(255, 90, 70, 0.85)",
+    };
+  }
+  return {
+    cap: "rgba(8, 12, 18, 0.92)",
+    side: "rgba(4, 6, 10, 0.7)",
+    stroke: "rgba(40, 55, 70, 0.35)",
+  };
+}
 
 function countryKey(f: CountryFeat | null | undefined) {
   if (!f?.properties) return "";
   return f.properties.ADMIN || f.properties.NAME || "";
-}
-
-function redPolygonColors(kind: "hover" | "active" | "idle", vivid: boolean) {
-  if (kind === "hover") {
-    return {
-      cap: "rgba(220, 38, 38, 0.88)",
-      side: "rgba(153, 27, 27, 0.75)",
-      stroke: "rgba(254, 202, 202, 0.95)",
-    };
-  }
-  if (kind === "active") {
-    if (vivid) return intelCountryColors(true);
-    return {
-      cap: "rgba(185, 48, 48, 0.72)",
-      side: "rgba(120, 30, 30, 0.55)",
-      stroke: "rgba(220, 100, 100, 0.8)",
-    };
-  }
-  if (vivid) return intelCountryColors(false);
-  return {
-    cap: "rgba(232, 214, 178, 0.92)",
-    side: "rgba(160, 135, 95, 0.55)",
-    stroke: "rgba(90, 65, 35, 0.55)",
-  };
-}
-
-function parchmentTagColor(
-  tag: ConfirmationTag | "focus",
-  active: boolean,
-): string {
-  const alpha = active ? 1 : 0.4;
-  switch (tag) {
-    case "확립":
-      return `rgba(122, 72, 28, ${alpha})`;
-    case "보도":
-      return `rgba(90, 70, 45, ${0.9 * alpha})`;
-    case "당사자 주장":
-      return `rgba(150, 70, 40, ${0.85 * alpha})`;
-    case "추정":
-    case "분석":
-      return `rgba(110, 95, 70, ${0.75 * alpha})`;
-    case "정황":
-      return `rgba(130, 120, 100, ${0.65 * alpha})`;
-    case "focus":
-      return `rgba(100, 70, 35, 0.7)`;
-    default:
-      return `rgba(90, 70, 50, ${alpha})`;
-  }
 }
 
 function matchCountry(name: string, targets: string[]) {
@@ -134,7 +152,6 @@ export default function GlobeView({
   activeCard,
   activeClaim,
   dimOthers,
-  intelMode = false,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,11 +159,11 @@ export default function GlobeView({
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [countries, setCountries] = useState<CountryFeat[]>([]);
   const [hoveredKey, setHoveredKey] = useState("");
-
-  const vivid = intelMode || !!activeClaim;
-
-  const colorFor = (tag: ConfirmationTag | "focus", active: boolean) =>
-    vivid ? intelTagColor(tag, active) : parchmentTagColor(tag, active);
+  /** 후티 연안 확장 단계 (0…N-1 누적) */
+  const [houthiStage, setHouthiStage] = useState(0);
+  /** 정부군 반격 구역 단계 */
+  const [govStage, setGovStage] = useState(0);
+  const [expandPulse, setExpandPulse] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -191,31 +208,118 @@ export default function GlobeView({
     try {
       const mat = g.globeMaterial();
       if (mat) {
-        mat.color?.set?.(vivid ? "#1a1430" : "#d7c4a0");
-        if (mat.emissive?.set) {
-          mat.emissive.set(vivid ? "#2a1a4a" : "#c4ae86");
-        }
-        mat.emissiveIntensity = vivid ? 0.25 : 0.12;
-        mat.shininess = vivid ? 18 : 4;
+        mat.color?.set?.("#05080c");
+        if (mat.emissive?.set) mat.emissive.set("#0a1520");
+        mat.emissiveIntensity = 0.35;
+        mat.shininess = 8;
       }
     } catch {
       /* ignore */
     }
-  }, [size.w, size.h, countries.length, vivid]);
+  }, [size.w, size.h, countries.length]);
 
   const activeCountryNames = useMemo(() => {
     if (!activeCard) return Object.values(CARD_COUNTRIES).flat();
     return CARD_COUNTRIES[activeCard.id] || [];
   }, [activeCard]);
 
+  const showOccupied =
+    !activeCard ||
+    activeCard.id === "c1" ||
+    activeCard.id === "c3" ||
+    (CARD_COUNTRIES[activeCard.id] || []).includes("Ukraine");
+
+  const showYemenFront =
+    !activeCard ||
+    activeCard.id === "c8" ||
+    activeCard.id === "c5";
+
+  const yemenFocus =
+    activeCard?.id === "c8" ||
+    activeClaim?.id?.startsWith("c8-") === true;
+
+  useEffect(() => {
+    if (!showYemenFront) {
+      setHouthiStage(0);
+      setGovStage(0);
+      setExpandPulse(0);
+      return;
+    }
+    setHouthiStage(0);
+    setGovStage(0);
+    let tick = 0;
+    const id = window.setInterval(() => {
+      tick += 1;
+      setExpandPulse((p) => (p + 1) % 48);
+      setHouthiStage((s) =>
+        s < YEMEN_EXPAND_STAGE_COUNT - 1 ? s + 1 : s,
+      );
+      if (tick >= 2) {
+        setGovStage((s) =>
+          s < YEMEN_GOV_STAGE_COUNT - 1 ? s + 1 : s,
+        );
+      }
+      if (tick > 0 && tick % (YEMEN_EXPAND_STAGE_COUNT + 5) === 0) {
+        setHouthiStage(0);
+        setGovStage(0);
+        tick = 0;
+      }
+    }, yemenFocus ? 850 : 1300);
+    return () => window.clearInterval(id);
+  }, [showYemenFront, yemenFocus, activeCard?.id, activeClaim?.id]);
+
   const polygonData = useMemo(() => {
     if (!countries.length) return [];
-    return countries.map((f) => {
+    let step = 0;
+    const base = countries.map((f) => {
       const name = f.properties.ADMIN || f.properties.NAME || "";
       const active = matchCountry(name, activeCountryNames);
-      return { ...f, __active: active };
+      const feat = {
+        ...f,
+        __active: active,
+        __occupied: false,
+        __yemen: false,
+        __step: active ? step : 0,
+      };
+      if (active) step += 1;
+      return feat;
     });
-  }, [countries, activeCountryNames]);
+    const extras: CountryFeat[] = [];
+    if (showOccupied) {
+      extras.push({
+        type: "Feature",
+        properties: {
+          NAME: "Occupied Ukraine",
+          ADMIN: "Occupied Ukraine",
+          name: OCCUPIED_UKRAINE_FEATURE.properties.name,
+        },
+        geometry: OCCUPIED_UKRAINE_FEATURE.geometry,
+        __active: false,
+        __occupied: true,
+        __step: 0,
+      } as CountryFeat);
+    }
+    if (showYemenFront) {
+      for (const z of HOUTHI_EXPAND_STAGES) {
+        if ((z.__stage ?? z.properties.stage) <= houthiStage) {
+          extras.push({ ...(z as YemenZoneFeat) } as CountryFeat);
+        }
+      }
+      for (const z of GOV_ADVANCE_ZONES) {
+        if ((z.__stage ?? z.properties.stage) <= govStage) {
+          extras.push({ ...(z as YemenZoneFeat) } as CountryFeat);
+        }
+      }
+    }
+    return [...base, ...extras];
+  }, [
+    countries,
+    activeCountryNames,
+    showOccupied,
+    showYemenFront,
+    houthiStage,
+    govStage,
+  ]);
 
   const { points, arcs, htmlLabels } = useMemo(() => {
     const points: PointDatum[] = [];
@@ -227,9 +331,46 @@ export default function GlobeView({
       lng: number,
       text: string,
       tag: ConfirmationTag | "focus",
+      marker?: "dot" | "fire" | "occupied" | "houthi" | "gov",
     ) => {
-      htmlLabels.push({ lat, lng, text, tag });
+      htmlLabels.push({ lat, lng, text, tag, marker });
     };
+
+    if (showOccupied) {
+      for (const o of OCCUPIED_LABELS) {
+        pushLabel(o.lat, o.lng, o.text, "보도", "occupied");
+      }
+    }
+
+    if (showYemenFront) {
+      for (const y of YEMEN_FRONT_LABELS) {
+        pushLabel(
+          y.lat,
+          y.lng,
+          y.text,
+          y.kind === "gov" ? "보도" : "확립",
+          y.kind === "strike" ? "fire" : y.kind,
+        );
+      }
+      if (yemenFocus || activeCard?.id === "c8") {
+        for (const s of SAUDI_YEMEN_STRIKES) {
+          pushLabel(s.at[1], s.at[0], s.label, s.tag, "fire");
+          if (s.from) {
+            arcs.push({
+              startLat: s.from[1],
+              startLng: s.from[0],
+              endLat: s.at[1],
+              endLng: s.at[0],
+              label: s.label,
+              tag: s.tag,
+              active: true,
+              dash: true,
+              alt: 0.42,
+            });
+          }
+        }
+      }
+    }
 
     if (!activeCard) {
       for (const card of cards) {
@@ -240,8 +381,8 @@ export default function GlobeView({
             label: p.label,
             tag: "focus",
             active: true,
-            size: vivid ? 0.55 : 0.45,
-            alt: 0.05,
+            size: 0.55,
+            alt: 0.06,
           });
           pushLabel(p.lat, p.lng, p.label, "focus");
         }
@@ -258,8 +399,8 @@ export default function GlobeView({
           label: p.label,
           tag: "확립",
           active: true,
-          size: 0.65,
-          alt: 0.07,
+          size: 0.7,
+          alt: 0.08,
         });
         pushLabel(p.lat, p.lng, p.label, "확립");
       }
@@ -268,16 +409,26 @@ export default function GlobeView({
     if (scene) {
       for (const layer of scene.layers) {
         if (layer.type === "point" && layer.at) {
-          points.push({
-            lat: layer.at[1],
-            lng: layer.at[0],
-            label: layer.label,
-            tag: layer.tag,
-            active: true,
-            size: 0.7,
-            alt: 0.08,
-          });
-          pushLabel(layer.at[1], layer.at[0], layer.label, layer.tag);
+          const isFire = layer.marker === "fire";
+          if (!isFire) {
+            points.push({
+              lat: layer.at[1],
+              lng: layer.at[0],
+              label: layer.label,
+              tag: layer.tag,
+              active: true,
+              size: 0.75,
+              alt: 0.09,
+              marker: "dot",
+            });
+          }
+          pushLabel(
+            layer.at[1],
+            layer.at[0],
+            layer.label,
+            layer.tag,
+            isFire ? "fire" : "dot",
+          );
         } else if (layer.type === "arc" && layer.from && layer.to) {
           arcs.push({
             startLat: layer.from[1],
@@ -288,7 +439,7 @@ export default function GlobeView({
             tag: layer.tag,
             active: true,
             dash: layer.tag !== "확립" && layer.tag !== "보도",
-            alt: vivid ? 0.36 : 0.3,
+            alt: 0.38,
           });
         } else if (layer.type === "line" && layer.path && layer.path.length > 1) {
           for (let i = 0; i < layer.path.length - 1; i++) {
@@ -303,7 +454,7 @@ export default function GlobeView({
               tag: layer.tag,
               active: true,
               dash: layer.tag !== "확립" && layer.tag !== "보도",
-              alt: vivid ? 0.28 : 0.24,
+              alt: 0.3,
             });
           }
         }
@@ -315,8 +466,8 @@ export default function GlobeView({
           label: c.title,
           tag: c.tag,
           active: true,
-          size: 0.55,
-          alt: 0.09,
+          size: 0.58,
+          alt: 0.1,
         });
         pushLabel(c.anchor[1], c.anchor[0], c.title, c.tag);
       }
@@ -332,7 +483,7 @@ export default function GlobeView({
             label: p.label,
             tag: "focus",
             active: false,
-            size: 0.22,
+            size: 0.2,
             alt: 0.015,
           });
         }
@@ -340,7 +491,15 @@ export default function GlobeView({
     }
 
     return { points, arcs, htmlLabels };
-  }, [cards, activeCard, activeClaim, dimOthers, vivid]);
+  }, [
+    cards,
+    activeCard,
+    activeClaim,
+    dimOthers,
+    showOccupied,
+    showYemenFront,
+    yemenFocus,
+  ]);
 
   useEffect(() => {
     const g = globeRef.current;
@@ -358,10 +517,20 @@ export default function GlobeView({
 
   const ready = size.w > 0 && size.h > 0;
 
+  const polyKind = (feat: CountryFeat) => {
+    if (feat.__yemen && feat.__side === "houthi") return "houthi" as const;
+    if (feat.__yemen && feat.__side === "gov") return "gov" as const;
+    if (feat.__occupied) return "occupied" as const;
+    const key = countryKey(feat);
+    if (hoveredKey && key === hoveredKey) return "hover" as const;
+    if (feat.__active) return "active" as const;
+    return "idle" as const;
+  };
+
   return (
-    <div className={vivid ? "globe-wrap intel" : "globe-wrap"} ref={wrapRef}>
+    <div className="globe-wrap intel" ref={wrapRef}>
       {!ready && (
-        <div className="globe-placeholder">벡터 지도를 펼치는 중이에요…</div>
+        <div className="globe-placeholder">인텔 맵을 펼치는 중이에요…</div>
       )}
       {ready && (
         <Globe
@@ -370,54 +539,47 @@ export default function GlobeView({
           height={size.h}
           globeImageUrl={undefined}
           bumpImageUrl={undefined}
-          backgroundColor={vivid ? "#0d0818" : "#ebe0c8"}
+          backgroundColor="#020406"
           showAtmosphere
-          atmosphereColor={vivid ? "#7c4dff" : "#c9b896"}
-          atmosphereAltitude={vivid ? 0.2 : 0.14}
+          atmosphereColor="#ff3b2f"
+          atmosphereAltitude={0.18}
           polygonsData={polygonData}
           polygonAltitude={(d: object) => {
             const feat = d as CountryFeat;
-            const key = countryKey(feat);
-            if (hoveredKey && key === hoveredKey) return POLY_ALT_HOVER;
-            if (feat.__active) return POLY_ALT_ACTIVE;
-            return POLY_ALT_BASE;
+            const kind = polyKind(feat);
+            if (kind === "houthi" || kind === "gov") {
+              const newest =
+                kind === "houthi"
+                  ? (feat.__stage ?? 0) === houthiStage
+                  : (feat.__stage ?? 0) === govStage;
+              const pulse = newest ? (expandPulse % 8) * 0.00035 : 0;
+              return POLY_ALT_YEMEN + pulse;
+            }
+            if (kind === "occupied") return POLY_ALT_OCCUPIED;
+            if (kind === "idle") return POLY_ALT_IDLE;
+            const step = feat.__step ?? 0;
+            const terrace =
+              POLY_ALT_STEP_BASE + Math.min(step, 8) * POLY_ALT_STEP_GAP;
+            if (kind === "hover") return terrace + POLY_ALT_HOVER_BUMP;
+            return terrace;
           }}
-          polygonCapColor={(d: object) => {
-            const feat = d as CountryFeat;
-            const key = countryKey(feat);
-            const kind =
-              hoveredKey && key === hoveredKey
-                ? "hover"
-                : feat.__active
-                  ? "active"
-                  : "idle";
-            return redPolygonColors(kind, vivid).cap;
-          }}
-          polygonSideColor={(d: object) => {
-            const feat = d as CountryFeat;
-            const key = countryKey(feat);
-            const kind =
-              hoveredKey && key === hoveredKey
-                ? "hover"
-                : feat.__active
-                  ? "active"
-                  : "idle";
-            return redPolygonColors(kind, vivid).side;
-          }}
-          polygonStrokeColor={(d: object) => {
-            const feat = d as CountryFeat;
-            const key = countryKey(feat);
-            const kind =
-              hoveredKey && key === hoveredKey
-                ? "hover"
-                : feat.__active
-                  ? "active"
-                  : "idle";
-            return redPolygonColors(kind, vivid).stroke;
-          }}
-          polygonsTransitionDuration={280}
+          polygonCapColor={(d: object) =>
+            bleedPolygon(polyKind(d as CountryFeat)).cap
+          }
+          polygonSideColor={(d: object) =>
+            bleedPolygon(polyKind(d as CountryFeat)).side
+          }
+          polygonStrokeColor={(d: object) =>
+            bleedPolygon(polyKind(d as CountryFeat)).stroke
+          }
+          polygonsTransitionDuration={720}
           onPolygonHover={(d: object | null) => {
-            setHoveredKey(countryKey(d as CountryFeat | null));
+            const feat = d as CountryFeat | null;
+            if (feat?.__occupied || feat?.__yemen) {
+              setHoveredKey("");
+              return;
+            }
+            setHoveredKey(countryKey(feat));
           }}
           pointsData={points}
           pointLat="lat"
@@ -426,7 +588,7 @@ export default function GlobeView({
           pointRadius={(d: object) => (d as PointDatum).size}
           pointColor={(d: object) => {
             const p = d as PointDatum;
-            return colorFor(p.tag, p.active);
+            return intelTagColor(p.tag, p.active);
           }}
           pointLabel={(d: object) => (d as PointDatum).label}
           arcsData={arcs}
@@ -435,40 +597,99 @@ export default function GlobeView({
           arcEndLat="endLat"
           arcEndLng="endLng"
           arcAltitude={(d: object) => (d as ArcDatum).alt}
-          arcStroke={vivid ? 1.7 : 1.45}
+          arcStroke={1.85}
           arcColor={(d: object) => {
             const a = d as ArcDatum;
-            const c = colorFor(a.tag, a.active);
+            const c = intelTagColor(a.tag, a.active);
             return [c, c];
           }}
-          arcDashLength={(d: object) => ((d as ArcDatum).dash ? 0.35 : 0.9)}
-          arcDashGap={(d: object) => ((d as ArcDatum).dash ? 0.14 : 0.05)}
+          arcDashLength={(d: object) => ((d as ArcDatum).dash ? 0.32 : 0.88)}
+          arcDashGap={(d: object) => ((d as ArcDatum).dash ? 0.12 : 0.04)}
           arcDashAnimateTime={(d: object) =>
-            (d as ArcDatum).dash ? 2200 : 3600
+            (d as ArcDatum).dash ? 2000 : 3400
           }
           arcLabel={(d: object) => (d as ArcDatum).label}
           htmlElementsData={htmlLabels}
           htmlLat="lat"
           htmlLng="lng"
-          htmlAltitude={0.12}
+          htmlAltitude={(d: object) => {
+            const m = (d as HtmlLabel).marker;
+            if (m === "fire") return 0.05;
+            if (m === "occupied") return 0.028;
+            return 0.13;
+          }}
           htmlElement={(d: object) => {
             const item = d as HtmlLabel;
+            if (item.marker === "fire") {
+              const stamp = document.createElement("div");
+              stamp.className = "globe-blast-stamp intel";
+              stamp.title = item.text;
+
+              const blast = document.createElement("div");
+              blast.className = "blast-visual";
+              blast.setAttribute("aria-hidden", "true");
+
+              const smokeL = document.createElement("span");
+              smokeL.className = "smoke smoke-l";
+              const smokeC = document.createElement("span");
+              smokeC.className = "smoke smoke-c";
+              const smokeR = document.createElement("span");
+              smokeR.className = "smoke smoke-r";
+              const flash = document.createElement("span");
+              flash.className = "blast-flash";
+              const core = document.createElement("span");
+              core.className = "blast-core";
+              const ember = document.createElement("span");
+              ember.className = "blast-ember";
+              blast.append(smokeL, smokeC, smokeR, flash, core, ember);
+
+              const caption = document.createElement("span");
+              caption.className = "blast-caption";
+              caption.textContent = item.text;
+              stamp.append(blast, caption);
+              return stamp;
+            }
+            if (item.marker === "occupied") {
+              const el = document.createElement("div");
+              el.className = "globe-occupied-label";
+              el.textContent = item.text;
+              return el;
+            }
+            if (item.marker === "houthi" || item.marker === "gov") {
+              const el = document.createElement("div");
+              el.className =
+                item.marker === "houthi"
+                  ? "globe-yemen-label houthi"
+                  : "globe-yemen-label gov";
+              el.textContent = item.text;
+              return el;
+            }
             const el = document.createElement("div");
-            el.className = vivid ? "globe-html-label intel" : "globe-html-label";
+            el.className = "globe-html-label intel";
             el.textContent = item.text;
-            el.style.borderColor = colorFor(item.tag, true);
+            el.style.borderColor = intelTagColor(item.tag, true);
             return el;
           }}
         />
       )}
       <div className="globe-legend" aria-hidden>
-        <span className="lg block">
-          {vivid ? "인텔 · 호버 시 붉은 면" : "나라 위에 올리면 붉게 살짝 뜸"}
-        </span>
-        <span className="lg arrow">
-          {vivid ? "알록달록 화살표 = 흐름" : "먹선 화살표 = 흐름"}
-        </span>
+        <span className="lg block">해당국 · 미세 계단 단</span>
+        <span className="lg occupied">주황 · 러 점령지</span>
+        <span className="lg houthi">빨강 확장 · 후티 연안</span>
+        <span className="lg gov">초록 · 정부군 반격</span>
+        <span className="lg fire">폭발 · 사우디·공습 타격</span>
       </div>
+      {showYemenFront && (
+        <div className="yemen-expand-hud" aria-hidden>
+          <span className="yemen-expand-title">홍해 전선 확장</span>
+          <span className="yemen-expand-bar">
+            후티 {houthiStage + 1}/{YEMEN_EXPAND_STAGE_COUNT}
+            {" · "}
+            정부군 {Math.min(govStage + 1, YEMEN_GOV_STAGE_COUNT)}/
+            {YEMEN_GOV_STAGE_COUNT}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

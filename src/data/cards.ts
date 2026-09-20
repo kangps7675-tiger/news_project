@@ -1,11 +1,18 @@
 import type { NetworkCard } from "@/types";
+import {
+  CASPIAN_STRIKE,
+  RU_ON_UA_SITES,
+  UA_ON_OCCUPIED_SITES,
+  UA_ON_RU_SITES,
+  sitesToFireLayers,
+} from "@/data/warSites";
 
 export const cards: NetworkCard[] = [
   {
     id: "c1",
     name: "러시아·이란·북한 드론·무기 네트워크",
     summary:
-      "이란이 드론 기술을 넘기고, 러시아가 대량 생산하고, 북한이 탄약과 인력을 대며 러시아의 전쟁을 떠받치는 구조.",
+      "이란이 드론 기술을 넘기고, 러시아가 대량 생산해 우크라이나를 때리고, 북한이 탄약과 인력을 대며 전쟁을 떠받치는 구조.",
     triggers: [
       "샤헤드",
       "게란",
@@ -55,7 +62,8 @@ export const cards: NetworkCard[] = [
               type: "point",
               label: "옐라부가",
               tag: "확립",
-              at: [52.05, 55.76],
+              at: [52.052, 55.788],
+              marker: "fire",
             },
             {
               type: "point",
@@ -63,10 +71,24 @@ export const cards: NetworkCard[] = [
               tag: "확립",
               at: [51.4, 35.7],
             },
+            {
+              type: "arc",
+              label: "게란→우크라이나",
+              tag: "확립",
+              from: [52.052, 55.788],
+              to: [30.523, 50.45],
+            },
+            {
+              type: "point",
+              label: "키이우",
+              tag: "확립",
+              at: [30.523, 50.45],
+              marker: "fire",
+            },
           ],
           callouts: [
             {
-              anchor: [52.05, 55.76],
+              anchor: [52.052, 55.788],
               title: "옐라부가 공장",
               tag: "확립",
               note: "게란-2 생산 거점. 생산량 추정치는 출처마다 다름",
@@ -333,27 +355,194 @@ export const cards: NetworkCard[] = [
     id: "c3",
     name: "러우전과 중동전의 연결",
     summary:
-      "같은 무기 기술과 공급망이 두 전쟁을 오가서, 한쪽 뉴스가 다른 쪽의 원인이나 결과가 될 수 있다.",
+      "러시아는 우크라이나 도시·전력을 때리고, 우크라이나는 러시아 정유·드론공장·점령지 유류시설을 줄기차게 폭격한다. 2026-07 카스피해 볼가 하구에서 이란 선박까지 타격한 보도가 ‘하나의 전선’을 보여 준다. 지도의 주황 구역은 러 점령지(DeepState 기반).",
     triggers: [
       "샤헤드",
-      "게란-5",
+      "게란",
+      "러우전",
+      "정유 폭격",
+      "카스피해",
+      "점령지",
       "러-이란 협력",
-      "이란 전쟁",
-      "러시아 이란 지원",
+      "딥스트라이크",
     ],
     doNotAssert: [
       "러시아가 이란전에 직접 참전했다고 쓰지 않는다",
-      "무기 지원 보도와 참전은 다르다",
+      "이스파한 HESA 공습을 우크라이나 소행으로 쓰지 않는다(미·이스라엘 작전으로 보도)",
+      "점령선은 단순화·시점 고정이며 실시간 전선이 아니다",
     ],
     marketTouchpoints: ["원유", "방산", "해상 운임·보험"],
     relatedCardIds: ["c1", "c5", "c2"],
     asOf: "2026-09-20",
     focusPoints: [
-      { lat: 48.5, lng: 31.0, label: "우크라이나" },
-      { lat: 32.0, lng: 53.0, label: "이란" },
-      { lat: 55.76, lng: 52.05, label: "옐라부가" },
+      { lat: 50.45, lng: 30.523, label: "키이우" },
+      { lat: 55.788, lng: 52.052, label: "옐라부가" },
+      { lat: 45.85, lng: 48.55, label: "카스피해·볼가 하구" },
+      { lat: 45.049, lng: 35.379, label: "페오도시야(점령)" },
     ],
     claims: [
+      {
+        id: "c3-ru-attacks-ua",
+        text: "러시아→우크라이나: 키이우·하르키우·드니프로·자포리자 시 등 도시·전력에 드론·미사일 반복 타격 (BBC·Reuters·DiXi 등)",
+        tag: "확립",
+        grade: "A",
+        sources: [
+          {
+            id: "dixi-energy",
+            label: "DiXi Group / NV",
+            url: "https://english.nv.ua/nation/four-campaigns-of-attacks-on-ukraine-s-power-grid-analysts-reveal-logic-behind-russian-strikes-50586889.html",
+          },
+          {
+            id: "bbc-kyiv-power",
+            label: "BBC",
+            url: "https://www.bbc.com/news/articles/cvgq2vnxzlvo",
+          },
+          {
+            id: "reuters-ua-energy-2025",
+            label: "Reuters",
+            url: "https://www.reuters.com/world/europe/russia-hits-several-key-ukraine-energy-facilities-kills-three-people-2025-11-08/",
+          },
+        ],
+        caveat: "폭발 마커는 보도된 도시·권역 중심. 개별 시설 GPS는 공개 보도 범위만",
+        scene: {
+          asOf: "2026-09-20",
+          camera: { lat: 49.0, lng: 33.5, altitude: 1.25 },
+          layers: [
+            {
+              type: "arc",
+              label: "러시아→우크라이나 공습",
+              tag: "확립",
+              from: [37.6, 55.75],
+              to: [30.523, 50.45],
+            },
+            ...sitesToFireLayers(RU_ON_UA_SITES),
+          ],
+          callouts: [
+            {
+              anchor: [30.523, 50.45],
+              title: "도시·전력 타격",
+              tag: "확립",
+              note: "주황 구역 = 러 점령지. 자포리자 시는 우크 통제, 에네르호다르·남부는 점령",
+            },
+          ],
+        },
+      },
+      {
+        id: "c3-ua-strikes-ru",
+        text: "우크라이나→러시아: 랴잔·볼고그라드·사라토프·시즈란·투압세·옐라부가 등 정유·드론공장 반복 딥스트라이크 + 점령 크림 페오도시야 터미널",
+        tag: "확립",
+        grade: "B",
+        sources: [
+          {
+            id: "reuters-ru-refineries",
+            label: "Reuters (정유 타격 목록)",
+            url: "https://www.reuters.com/world/europe/russian-energy-facilities-targeted-by-ukraines-drones-2025-03-19/",
+          },
+          {
+            id: "reuters-moscow-refinery-2026",
+            label: "Reuters (모스크바 정유 2026-09)",
+            url: "https://www.reuters.com/world/europe/two-dead-moscow-region-drones-hit-oil-refinery-russian-capital-2026-09-20/",
+          },
+          {
+            id: "ap-yelabuga-2024",
+            label: "AP (옐라부가 2024-04)",
+            url: "https://apnews.com/article/ukraine-russia-war-drones-b2299c10adfde656dbec6b7223598bbc",
+          },
+        ],
+        caveat: "시설별 피해·가동 중단은 출처마다 다름. 마커는 공개 보도된 시설명 위치",
+        scene: {
+          asOf: "2026-09-20",
+          camera: { lat: 52.5, lng: 42, altitude: 1.5 },
+          layers: [
+            {
+              type: "arc",
+              label: "우크→러 딥스트라이크",
+              tag: "확립",
+              from: [30.523, 50.45],
+              to: [39.696, 54.629],
+            },
+            ...sitesToFireLayers(UA_ON_RU_SITES),
+            ...sitesToFireLayers(UA_ON_OCCUPIED_SITES),
+          ],
+          callouts: [
+            {
+              anchor: [52.052, 55.788],
+              title: "옐라부가(게란)",
+              tag: "확립",
+              note: "이란 설계 샤헤드 러시아 양산. 2024-04·2025 타격 보도",
+            },
+            {
+              anchor: [35.379, 45.049],
+              title: "점령 크림 페오도시야",
+              tag: "보도",
+              note: "점령지 유류 터미널 화재 보도 — 주황 구역 안",
+            },
+          ],
+        },
+      },
+      {
+        id: "c3-ua-iran-front",
+        text: "하나의 전선: 2026-07-25 카스피해 볼가 하구(~아스트라한)에서 이란 선박 Anna 등 타격(BBC·로이터). 이스파한 본토 공습은 미·이스라엘 — 우크 소행 아님",
+        tag: "보도",
+        grade: "B",
+        sources: [
+          {
+            id: "bbc-caspian-iran-ship",
+            label: "BBC",
+            url: "https://www.bbc.com/news/articles/cwyj7yl0xndo",
+          },
+          {
+            id: "reuters-caspian-iran",
+            label: "Reuters",
+            url: "https://www.reuters.com/world/europe/iran-says-ukrainian-attack-vessel-caspian-sea-killed-sailor-2026-07-25/",
+          },
+          {
+            id: "kyivpost-zelensky-iran",
+            label: "Kyiv Post",
+            url: "https://www.kyivpost.com/post/81139",
+          },
+        ],
+        counterClaim: "이란은 민간 화물·비개입 주장. 선박 성격은 당사자마다 다름",
+        caveat: "폭발 마커는 볼가 하구 정박 위치(이란 대사 발언: 하구 ~5km). 이스파한에는 우크 타격 마커를 두지 않음",
+        scene: {
+          asOf: "2026-07-25",
+          camera: { lat: 46.5, lng: 48, altitude: 1.55 },
+          layers: [
+            {
+              type: "arc",
+              label: "이란→러시아 샤헤드",
+              tag: "확립",
+              from: [51.55, 32.85],
+              to: [52.052, 55.788],
+            },
+            {
+              type: "arc",
+              label: "우크→카스피해 타격",
+              tag: "보도",
+              from: [30.523, 50.45],
+              to: CASPIAN_STRIKE.at,
+            },
+            ...sitesToFireLayers([CASPIAN_STRIKE]),
+            ...sitesToFireLayers(
+              UA_ON_RU_SITES.filter((s) => s.id === "yelabuga"),
+            ),
+            {
+              type: "point",
+              label: "이스파한 HESA(원산지)",
+              tag: "분석",
+              at: [51.55, 32.85],
+            },
+          ],
+          callouts: [
+            {
+              anchor: CASPIAN_STRIKE.at,
+              title: "볼가 하구 타격",
+              tag: "보도",
+              note: CASPIAN_STRIKE.note,
+            },
+          ],
+        },
+      },
       {
         id: "c3-tech-cycle",
         text: "기술의 순환: 이란 샤헤드→러시아 게란→개량형이 이란으로 돌아간다는 분석",
@@ -370,22 +559,25 @@ export const cards: NetworkCard[] = [
         caveat: "순환을 확립된 사실처럼 쓰지 않는다",
         scene: {
           asOf: "2026-09-20",
-          camera: { lat: 40, lng: 45, altitude: 1.7 },
+          camera: { lat: 42, lng: 48, altitude: 1.7 },
           layers: [
             {
               type: "arc",
               label: "이란→러시아",
               tag: "분석",
               from: [51.4, 35.7],
-              to: [52.05, 55.76],
+              to: [52.052, 55.788],
             },
             {
               type: "arc",
               label: "러시아→이란 (추정)",
               tag: "추정",
-              from: [52.05, 55.76],
+              from: [52.052, 55.788],
               to: [51.4, 35.7],
             },
+            ...sitesToFireLayers(
+              UA_ON_RU_SITES.filter((s) => s.id === "yelabuga"),
+            ),
           ],
           callouts: [
             {
@@ -399,30 +591,29 @@ export const cards: NetworkCard[] = [
       },
       {
         id: "c3-iran-war",
-        text: "이란전 배경: 2026년 2월 28일경부터 미국·이스라엘이 이란을 공격했다는 보도",
+        text: "이란전 배경: 2026년 2월 말부터 미국·이스라엘이 이란(이스파한 HESA 등)을 공격했다는 보도 — 우크라이나 타격과 별개",
         tag: "보도",
         grade: "B",
-        sources: [
-          { id: "crs-hormuz", label: "미 의회조사국 등" },
-        ],
-        caveat: "정확한 개시일은 자료마다 표현이 다를 수 있다",
+        sources: [{ id: "crs-hormuz", label: "미 의회조사국 등" }],
+        caveat: "우크라이나 소행으로 읽히지 않게. 폭발 마커는 미·이스라엘 작전 보도 권역",
         scene: {
-          asOf: "2026-02",
-          camera: { lat: 32, lng: 53, altitude: 1.4 },
+          asOf: "2026-03",
+          camera: { lat: 32.85, lng: 51.55, altitude: 1.35 },
           layers: [
             {
               type: "point",
-              label: "이란",
+              label: "이스파한 HESA (미·이스라엘)",
               tag: "보도",
-              at: [53.0, 32.0],
+              at: [51.55, 32.85],
+              marker: "fire",
             },
           ],
           callouts: [
             {
-              anchor: [53.0, 32.0],
-              title: "이란전 개시 (2026년 2월 말)",
+              anchor: [51.55, 32.85],
+              title: "샤헤드 원산 공장 피격",
               tag: "보도",
-              note: "여러 출처가 일치하는 보도. 러시아 직접 참전으로 읽히지 않게",
+              note: "미·이스라엘 작전으로 보도. 우크 카스피해 타격과 구분",
             },
           ],
         },
@@ -648,7 +839,7 @@ export const cards: NetworkCard[] = [
       "해상 보험",
       "정유 마진",
     ],
-    relatedCardIds: ["c2", "c4", "c6", "c3"],
+    relatedCardIds: ["c2", "c4", "c6", "c3", "c8"],
     asOf: "2026-09-20",
     focusPoints: [
       { lat: 26.5, lng: 56.5, label: "호르무즈" },
@@ -1139,6 +1330,234 @@ export const cards: NetworkCard[] = [
       },
     ],
   },
+  {
+    id: "c8",
+    name: "예멘 홍해 전선: 후티 확장·정부군 반격·사우디 공습",
+    summary:
+      "후티가 홍해 연안·모카·페림을 밀어 바브엘만데브를 조이고, 정부군은 타이즈·마리브·자우프에서 연속 반격을 주장하며, 사우디·정부 공습이 맞붙는 자리.",
+    triggers: [
+      "후티",
+      "홍해",
+      "모카",
+      "페림",
+      "마윤",
+      "바브엘만데브",
+      "호데이다",
+      "타이즈",
+      "마리브",
+      "자우프",
+      "사우디 공습",
+      "예멘 정부군",
+      "하니시",
+    ],
+    doNotAssert: [
+      "전선·점령 면적을 하나로 단정하지 않는다 (표시는 단순화)",
+      "후티·이란 배후를 사실처럼 쓰지 않는다",
+      "정부군 '연속 승리'는 당사자·친정부 발표를 교차검증 전제로 둔다",
+      "사우디 공습 횟수·피해를 카드에 고정하지 않는다",
+    ],
+    marketTouchpoints: [
+      "홍해·바브엘만데브 통행",
+      "원유·유조선 운임",
+      "해상 보험",
+      "사우디 원유 수출",
+    ],
+    relatedCardIds: ["c5", "c3", "c4"],
+    asOf: "2026-09-20",
+    focusPoints: [
+      { lat: 13.32, lng: 43.25, label: "모카항" },
+      { lat: 12.65, lng: 43.4, label: "페림섬" },
+      { lat: 14.8, lng: 42.95, label: "호데이다" },
+      { lat: 15.45, lng: 45.3, label: "마리브" },
+    ],
+    claims: [
+      {
+        id: "c8-houthi-redsea",
+        text: "후티가 모카항과 페림(마윤)섬 등을 장악하며 홍해·바브엘만데브 일대 영향력을 넓혔다",
+        tag: "확립",
+        grade: "B",
+        sources: [
+          {
+            id: "reuters-houthi-bab",
+            label: "로이터",
+            url: "https://www.reuters.com/world/middle-east/saudi-says-no-danger-after-khamis-mushait-alert-amid-clashes-with-houthis-2026-09-10/",
+          },
+          {
+            id: "bbc-houthi-redsea",
+            label: "BBC",
+            url: "https://www.bbc.co.uk/news/articles/c23x72yx2rvo",
+          },
+          {
+            id: "cnn-mocha",
+            label: "CNN",
+            url: "https://www.cnn.com/2026/09/10/middleeast/houthis-capture-mocha-red-sea-strait-intl",
+          },
+        ],
+        counterClaim:
+          "전선은 날마다 바뀌고, '연안 전체 장악' 표현은 출처마다 범위가 다르다",
+        caveat:
+          "글로브의 색 면은 단순화 표시용이다. 확정 국경·점령 면적이 아니다",
+        scene: {
+          asOf: "2026-09",
+          camera: { lat: 13.2, lng: 43.5, altitude: 0.85 },
+          layers: [
+            {
+              type: "point",
+              label: "호데이다",
+              tag: "확립",
+              at: [42.95, 14.8],
+            },
+            {
+              type: "point",
+              label: "모카항",
+              tag: "확립",
+              at: [43.25, 13.32],
+            },
+            {
+              type: "point",
+              label: "페림섬",
+              tag: "확립",
+              at: [43.4, 12.65],
+            },
+            {
+              type: "line",
+              label: "홍해 연안 남하",
+              tag: "보도",
+              path: [
+                [42.95, 14.8],
+                [43.25, 13.32],
+                [43.4, 12.65],
+              ],
+            },
+          ],
+          callouts: [
+            {
+              anchor: [43.4, 12.65],
+              title: "바브엘만데브 조임",
+              tag: "확립",
+              note: "로이터·BBC·CNN 등. 지도 색 면은 애니메이션 표시용",
+              sourceIds: ["reuters-houthi-bab", "bbc-houthi-redsea"],
+            },
+          ],
+        },
+      },
+      {
+        id: "c8-gov-wins",
+        text: "예멘 정부군·친정부 세력이 타이즈·마리브·자우프 등에서 후티 공격을 막고 일부 고지·지역을 되찾았다고 발표했다",
+        tag: "당사자 주장",
+        grade: "C",
+        sources: [
+          {
+            id: "arabnews-kahbub",
+            label: "Arab News",
+            url: "https://www.arabnews.jp/en/middle-east/yemeni-forces-battle-houthi-assaults-on-strategic-heights-overlooking-bab-al-mandab-3000219/",
+          },
+          {
+            id: "aa-taiz",
+            label: "아나돌루",
+            url: "https://www.aa.com.tr/en/middle-east/yemeni-warplanes-strike-houthi-positions-east-of-taiz-city/4061662",
+          },
+        ],
+        counterClaim:
+          "후티 쪽도 대규모 성과를 주장한다. '연속 승리'는 한쪽 발표만으로 굳히지 않는다",
+        caveat: "친정부·정부 발표 비중. 독립 취재로 면적·사상자는 교차할 것",
+        scene: {
+          asOf: "2026-09",
+          camera: { lat: 14.8, lng: 44.6, altitude: 1.05 },
+          layers: [
+            {
+              type: "point",
+              label: "타이즈",
+              tag: "보도",
+              at: [44.02, 13.58],
+            },
+            {
+              type: "point",
+              label: "마리브",
+              tag: "당사자 주장",
+              at: [45.32, 15.46],
+            },
+            {
+              type: "point",
+              label: "자우프",
+              tag: "당사자 주장",
+              at: [44.78, 16.15],
+            },
+          ],
+          callouts: [
+            {
+              anchor: [44.1, 13.5],
+              title: "정부군 반격 주장",
+              tag: "당사자 주장",
+              note: "고지 사수·일부 탈환 발표. 교차검증 전 단정 금지",
+            },
+          ],
+        },
+      },
+      {
+        id: "c8-saudi-strikes",
+        text: "사우디·예멘 정부 측 공습이 타이즈·호데이다·모카 접근로 등 후티 진영에 이어지고, 후티도 사우디 남부·인프라를 겨냥한 공격을 주장·보도한다",
+        tag: "보도",
+        grade: "C",
+        sources: [
+          { id: "bbc-houthi-redsea", label: "BBC" },
+          { id: "aa-taiz", label: "아나돌루" },
+          { id: "reuters-houthi-bab", label: "로이터" },
+        ],
+        counterClaim: "타격 횟수·피해 규모는 발표마다 다르다",
+        caveat: "공습 표시는 보도된 전선 일대 참고 지점이다. 정확한 탄착점이 아니다",
+        scene: {
+          asOf: "2026-09",
+          camera: { lat: 15.5, lng: 44.0, altitude: 1.15 },
+          layers: [
+            {
+              type: "arc",
+              label: "사우디→타이즈 공습",
+              tag: "보도",
+              from: [44.8, 18.2],
+              to: [44.15, 13.55],
+            },
+            {
+              type: "arc",
+              label: "사우디→호데이다 공습",
+              tag: "보도",
+              from: [42.5, 18.0],
+              to: [43.0, 14.8],
+            },
+            {
+              type: "point",
+              label: "타이즈 동부 타격",
+              tag: "보도",
+              at: [44.15, 13.55],
+              marker: "fire",
+            },
+            {
+              type: "point",
+              label: "호데이다 일대 타격",
+              tag: "보도",
+              at: [43.0, 14.8],
+              marker: "fire",
+            },
+            {
+              type: "point",
+              label: "모카 접근로",
+              tag: "보도",
+              at: [43.4, 13.4],
+              marker: "fire",
+            },
+          ],
+          callouts: [
+            {
+              anchor: [44.5, 16.5],
+              title: "공습 ↔ 전선",
+              tag: "보도",
+              note: "폭격 도장은 전선 일대 표시. 탄착점 확정이 아님",
+            },
+          ],
+        },
+      },
+    ],
+  },
 ];
 
 export function getCardById(id: string): NetworkCard | undefined {
@@ -1156,4 +1575,4 @@ export function getCardSummariesForPrompt() {
 
 export const EXAMPLE_NEWS = `2026년 9월 11일, 사우디아라비아는 이라크에서 발사된 것으로 추정되는 드론 공격 이후 동서 송유관(아브카이크~얀부)의 가동을 임시 중단했다고 발표했다. CNN, 로이터, Al Jazeera 등 주요 매체가 사우디 정부 발표를 인용해 보도했다. 이 송유관은 호르무즈 해협을 우회해 홍해 얀부항으로 원유를 보내는 경로로, 분석가들은 세계 원유 공급의 최대 4%가 영향을 받을 수 있다고 추정했다. 재개 시점은 아직 정해지지 않았다.
 
-같은 시기 후티 세력은 예멘 홍해 연안의 모카항과 바브엘만데브 해협 입구의 페림(마윤)섬을 장악했다는 보도가 나왔다. 이란전 이후 호르무즈 통행이 급감한 가운데, 홍해 남단 초크포인트까지 동시에 흔들리면서 전쟁위험 보험료와 유조선 운임에 대한 시장 관심이 커지고 있다.`;
+같은 시기 후티 세력은 예멘 홍해 연안의 모카항과 바브엘만데브 해협 입구의 페림(마윤)섬을 장악했다는 보도가 나왔다. 예멘 정부군은 타이즈·마리브·자우프 등에서 후티 공격을 막고 일부 고지를 되찾았다고 발표했고, 사우디·정부 측 공습도 이어졌다. 이란전 이후 호르무즈 통행이 급감한 가운데 홍해 남단 초크포인트까지 동시에 흔들리면서 전쟁위험 보험료와 유조선 운임에 대한 시장 관심이 커지고 있다.`;

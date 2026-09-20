@@ -259,6 +259,37 @@ export const CARD_MARKET_LAYERS: CardMarketLayer[] = [
       },
     ],
   },
+  {
+    cardId: "c8",
+    title: "이 사안과 맞닿는 자산",
+    blurb:
+      "홍해·바브엘만데브가 조이면 유가·달러·금리 분위기가 같이 흔들릴 수 있어요.",
+    instruments: [
+      {
+        symbol: "DCOILBRENTEU",
+        label: "브렌트 원유",
+        why: "홍해·중동 공급 리스크와 자주 같이.",
+        kind: "commodity",
+        unit: "$/bbl",
+        digits: 2,
+      },
+      {
+        symbol: "DCOILWTICO",
+        label: "WTI 원유",
+        why: "에너지 가격 온도계.",
+        kind: "commodity",
+        unit: "$/bbl",
+        digits: 2,
+      },
+      {
+        symbol: "DTWEXBGS",
+        label: "달러 지수",
+        why: "위험 회피·원자재 달러 가격.",
+        kind: "index",
+        digits: 2,
+      },
+    ],
+  },
 ];
 
 export function getMarketLayerForCard(cardId: string | null | undefined) {
@@ -267,7 +298,7 @@ export function getMarketLayerForCard(cardId: string | null | undefined) {
 }
 
 export const CARD_COUNTRIES: Record<string, string[]> = {
-  c1: ["Russia", "Iran", "North Korea"],
+  c1: ["Russia", "Iran", "North Korea", "Ukraine"],
   c2: [
     "Russia",
     "Iran",
@@ -281,4 +312,5 @@ export const CARD_COUNTRIES: Record<string, string[]> = {
   c5: ["Iran", "Saudi Arabia", "Yemen", "United Arab Emirates", "Oman"],
   c6: ["Greenland", "Russia", "China", "United States of America", "Denmark"],
   c7: ["North Korea", "Russia", "Iran", "Georgia"],
+  c8: ["Yemen", "Saudi Arabia", "Eritrea", "Djibouti"],
 };

@@ -71,8 +71,11 @@ export interface NetworkCard {
 export interface GoogleNewsHit {
   title: string;
   link: string;
+  /** 원문 URL (가능하면 Google 리다이렉트가 아닌 주소) */
+  url?: string;
   source: string;
   publishedAt: string | null;
+  mediaTier?: string;
 }
 
 export interface AnalysisResult {

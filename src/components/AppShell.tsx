@@ -42,16 +42,19 @@ export default function AppShell() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [intelMode, setIntelMode] = useState(false);
 
   const selectCard = useCallback((card: NetworkCard) => {
     setActiveCard(card);
     setActiveClaim(null);
     setLevel("L1");
+    setIntelMode(true);
   }, []);
 
   const selectClaim = useCallback((claim: Claim) => {
     setActiveClaim(claim);
     setLevel("L2");
+    setIntelMode(true);
   }, []);
 
   const goRelated = useCallback((cardId: string) => {
@@ -70,6 +73,7 @@ export default function AppShell() {
       setActiveCard(null);
       setActiveClaim(null);
       setLevel("L0");
+      setIntelMode(false);
     }
   }, [level]);
 
@@ -108,14 +112,24 @@ export default function AppShell() {
   }, [newsText]);
 
   return (
-    <div className="shell">
+    <div className={intelMode ? "shell intel-on" : "shell"}>
       <div className="globe-pane">
+        <div className="intel-toggle-bar">
+          <button
+            type="button"
+            className={intelMode ? "intel-toggle on" : "intel-toggle"}
+            onClick={() => setIntelMode((v) => !v)}
+          >
+            {intelMode ? "인텔 모드 ON" : "인텔 모드"}
+          </button>
+        </div>
         <GlobeErrorBoundary>
           <GlobeView
             cards={cards}
             activeCard={activeCard}
             activeClaim={activeClaim}
             dimOthers={!!activeClaim}
+            intelMode={intelMode}
           />
         </GlobeErrorBoundary>
       </div>

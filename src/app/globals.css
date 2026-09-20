@@ -596,6 +596,259 @@ textarea:focus {
   margin-top: 0.15rem;
 }
 
+.news-url-list li {
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px dashed rgba(90, 65, 35, 0.18);
+}
+
+.news-url-list .rss-url {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  color: var(--accent);
+  word-break: break-all;
+  line-height: 1.35;
+  opacity: 0.85;
+}
+
+.tier-mini {
+  display: inline-block;
+  margin-right: 0.35rem;
+  padding: 0.08rem 0.35rem;
+  border-radius: 3px;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+/* —— 교차검증 티어 보드 —— */
+.tier-board {
+  margin: var(--space-3) 0;
+  padding: 0.85rem 0.9rem;
+  border: 2px solid rgba(90, 65, 35, 0.28);
+  background:
+    linear-gradient(135deg, rgba(255, 248, 230, 0.95), rgba(244, 232, 205, 0.9)),
+    repeating-linear-gradient(
+      -12deg,
+      transparent,
+      transparent 10px,
+      rgba(139, 90, 43, 0.03) 10px,
+      rgba(139, 90, 43, 0.03) 11px
+    );
+  box-shadow: 0 2px 0 rgba(90, 65, 35, 0.12);
+}
+
+.tier-board.compact {
+  padding: 0.65rem 0.75rem;
+}
+
+.tier-board-head {
+  margin-bottom: 0.65rem;
+}
+
+.tier-kicker {
+  display: inline-block;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(90deg, #1b8a4a, #2f6fed, #d4891a, #c62828);
+  padding: 0.2rem 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.tier-board-head h3 {
+  margin: 0.15rem 0 0.25rem;
+  font-size: 1.05rem;
+}
+
+.tier-ladder {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+}
+
+.tier-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0.4rem 0.5rem;
+  border: 2px solid color-mix(in srgb, var(--tier-c) 55%, transparent);
+  background: color-mix(in srgb, var(--tier-c) 12%, #fffaf0);
+  min-height: 4.2rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tier-step.on {
+  border-color: var(--tier-c);
+  background: color-mix(in srgb, var(--tier-c) 28%, #fffaf0);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tier-c) 45%, transparent);
+  transform: translateY(-2px);
+}
+
+.tier-step-idx {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--tier-c);
+  opacity: 0.85;
+}
+
+.tier-step-code {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--tier-c);
+  font-family: var(--font-display);
+}
+
+.tier-step-name {
+  font-size: 0.68rem;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.tier-step-now {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--tier-c);
+  padding: 0.08rem 0.28rem;
+}
+
+.tier-tx-note {
+  margin: 0 0 0.5rem;
+  font-size: 0.74rem;
+  color: #7a6548;
+}
+
+.tier-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+}
+
+.tier-pill {
+  display: inline-block;
+  padding: 0.28rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  border-radius: 2px;
+}
+
+.tier-pill.outline {
+  background: transparent;
+  border: 1.5px solid var(--line);
+  color: var(--ink);
+}
+
+.tier-tips {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.74rem;
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+
+.tier-tips li {
+  margin-bottom: 0.2rem;
+}
+
+/* —— 인텔 모드 · 글로브 HTML 라벨 —— */
+.intel-toggle-bar {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 5;
+}
+
+.intel-toggle {
+  border: 1.5px solid rgba(90, 65, 35, 0.35);
+  background: rgba(255, 248, 230, 0.92);
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  box-shadow: 0 1px 0 rgba(90, 65, 35, 0.15);
+}
+
+.intel-toggle.on {
+  border-color: transparent;
+  color: #fff;
+  background: linear-gradient(
+    110deg,
+    #00c878,
+    #2979ff,
+    #ff6d00,
+    #e040fb,
+    #00bcd4
+  );
+  background-size: 200% 200%;
+  animation: intel-shift 4s ease infinite;
+}
+
+@keyframes intel-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.shell.intel-on .globe-pane {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(124, 77, 255, 0.25), transparent 50%),
+    radial-gradient(ellipse at 70% 60%, rgba(0, 229, 255, 0.18), transparent 45%),
+    radial-gradient(ellipse at 40% 80%, rgba(255, 64, 129, 0.15), transparent 40%),
+    linear-gradient(160deg, #120c22 0%, #1a1430 55%, #0d1a28 100%);
+}
+
+.globe-html-label {
+  pointer-events: none;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  color: #3a2a14;
+  background: rgba(255, 248, 230, 0.92);
+  border: 1.5px solid rgba(90, 65, 35, 0.45);
+  padding: 2px 7px;
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(40, 25, 10, 0.2);
+  transform: translate(-50%, -120%);
+}
+
+.globe-html-label.intel {
+  color: #fff;
+  background: rgba(20, 12, 40, 0.88);
+  border-width: 2px;
+  text-shadow: 0 0 6px rgba(0, 229, 255, 0.45);
+  box-shadow:
+    0 0 10px rgba(255, 64, 129, 0.35),
+    0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 900px) {
+  .tier-ladder {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 .tag {
   display: inline-block;
   font-size: 0.68rem;

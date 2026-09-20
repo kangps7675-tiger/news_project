@@ -6,6 +6,7 @@ import {
 } from "@/lib/googleNewsRss";
 import { checkRateLimit, hashIp } from "@/lib/rateLimit";
 import { logAnalysisEvent } from "@/lib/supabase";
+import { classifyMediaTier } from "@/lib/verificationTiers";
 
 const MIN = 100;
 const MAX = 5000;
@@ -53,7 +54,10 @@ export async function POST(req: NextRequest) {
     ]);
 
     if (analysis.isNews) {
-      analysis.relatedSources = related;
+      analysis.relatedSources = related.map((item) => ({
+        ...item,
+        mediaTier: classifyMediaTier(item.source),
+      }));
       analysis.relatedSourcesQuery = query;
     }
 

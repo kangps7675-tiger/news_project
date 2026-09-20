@@ -9,6 +9,8 @@ import type {
 } from "@/types";
 import { EXAMPLE_NEWS } from "@/data/cards";
 import MarketPanel from "@/components/MarketPanel";
+import VerificationTiers from "@/components/VerificationTiers";
+import { MEDIA_TIER_META, classifyMediaTier } from "@/lib/verificationTiers";
 
 export type PanelLevel = "L0" | "L1" | "L2" | "L3" | "L4";
 
@@ -310,13 +312,20 @@ export default function SidePanel(props: Props) {
               ))}
             </ul>
             {activeClaim && (
-              <button
-                type="button"
-                className="btn-primary wide"
-                onClick={() => onSetLevel("L3")}
-              >
-                이 고리, 근거 보기
-              </button>
+              <>
+                <VerificationTiers
+                  tag={activeClaim.tag}
+                  grade={activeClaim.grade}
+                  sourceName={activeClaim.sources[0]?.label}
+                />
+                <button
+                  type="button"
+                  className="btn-primary wide"
+                  onClick={() => onSetLevel("L3")}
+                >
+                  이 고리, 근거 보기
+                </button>
+              </>
             )}
           </section>
         )}
@@ -325,17 +334,12 @@ export default function SidePanel(props: Props) {
           <section className="block">
             <h2>근거 살펴보기</h2>
             <p className="lead">{activeClaim.text}</p>
-            <div className="meta-row">
-              <span className={TAG_CLASS[activeClaim.tag] || "tag"}>
-                {activeClaim.tag}
-              </span>
-              <span className="grade">믿을 만함 등급 {activeClaim.grade}</span>
-            </div>
-            <p className="muted">
-              등급은 시험 점수 같아요. A에 가까울수록 “여러 곳이 같이 말한
-              편”, X는 “아직 못 찾음”에 가까워요.
-            </p>
-            <h3>출처</h3>
+            <VerificationTiers
+              tag={activeClaim.tag}
+              grade={activeClaim.grade}
+              sourceName={activeClaim.sources[0]?.label}
+            />
+            <h3>카드에 적힌 출처</h3>
             <ul className="sources">
               {activeClaim.sources.map((s) => (
                 <li key={s.id}>
@@ -478,6 +482,10 @@ function AnalysisBlock({
       </div>
       <div className="cred">
         <h3>기사 신뢰도 점검</h3>
+        <VerificationTiers
+          sourceName={analysis.credibility.source}
+          compact
+        />
         <p>
           <span>원천</span> {analysis.credibility.source}
         </p>
@@ -507,18 +515,36 @@ function RelatedSourcesList({
 }) {
   return (
     <div className="related-rss">
-      <h3>관련 보도 (Google News)</h3>
+      <h3>실제 뉴스 링크</h3>
       {query && <p className="muted rss-query">검색: {query}</p>}
-      <p className="muted">헤드라인·링크만 모읍니다. 교차검증 완료가 아닙니다.</p>
-      <ul className="sources">
-        {items.map((item) => (
-          <li key={item.link}>
-            <a href={item.link} target="_blank" rel="noreferrer">
-              {item.title}
-            </a>
-            <span className="rss-meta">{item.source}</span>
-          </li>
-        ))}
+      <p className="muted">
+        가능하면 언론사 원문 URL로 열어요. 티어는 매체 이름 기준 참고값이에요.
+      </p>
+      <ul className="sources news-url-list">
+        {items.map((item) => {
+          const href = item.url || item.link;
+          const tier = (item.mediaTier as keyof typeof MEDIA_TIER_META) ||
+            classifyMediaTier(item.source);
+          const meta = MEDIA_TIER_META[tier] || MEDIA_TIER_META.TX;
+          return (
+            <li key={href + item.title}>
+              <a href={href} target="_blank" rel="noreferrer">
+                {item.title}
+              </a>
+              <span className="rss-meta">
+                <span
+                  className="tier-mini"
+                  style={{ background: meta.color }}
+                  title={meta.tip}
+                >
+                  {meta.short}
+                </span>
+                {item.source}
+              </span>
+              <span className="rss-url">{href}</span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -539,14 +565,14 @@ function ClaimRssLookup({ querySeed }: { querySeed: string }) {
       );
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "관련 보도를 가져오지 못했습니다.");
+        setError(data.error || "관련 보도를 가져오지 못했어요.");
         setItems([]);
         return;
       }
       setQuery(data.query);
       setItems(data.items || []);
     } catch {
-      setError("네트워크 오류가 났습니다.");
+      setError("네트워크 오류가 났어요.");
     } finally {
       setLoading(false);
     }
@@ -560,14 +586,14 @@ function ClaimRssLookup({ querySeed }: { querySeed: string }) {
         disabled={loading}
         onClick={load}
       >
-        {loading ? "관련 보도 검색 중…" : "Google News에서 관련 보도 찾기"}
+        {loading ? "원문 링크 찾는 중…" : "실제 뉴스 URL 가져오기"}
       </button>
       {error && <p className="warn">{error}</p>}
       {items && items.length > 0 && (
         <RelatedSourcesList items={items} query={query} />
       )}
       {items && items.length === 0 && !error && (
-        <p className="muted">관련 보도를 찾지 못했습니다.</p>
+        <p className="muted">관련 보도를 찾지 못했어요.</p>
       )}
     </div>
   );

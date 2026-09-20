@@ -4,6 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { Claim, ConfirmationTag, NetworkCard } from "@/types";
 import { CARD_COUNTRIES } from "@/data/marketLayers";
+import {
+  intelCountryColors,
+  intelTagColor,
+} from "@/lib/verificationTiers";
 
 const Globe = dynamic(() => import("react-globe.gl"), {
   ssr: false,
@@ -20,6 +24,8 @@ type Props = {
   activeCard: NetworkCard | null;
   activeClaim: Claim | null;
   dimOthers: boolean;
+  /** 인텔 모드: 레이어를 알록달록하게 */
+  intelMode?: boolean;
 };
 
 type PointDatum = {
@@ -44,12 +50,11 @@ type ArcDatum = {
   alt: number;
 };
 
-type LabelDatum = {
+type HtmlLabel = {
   lat: number;
   lng: number;
   text: string;
-  tag: ConfirmationTag;
-  active: boolean;
+  tag: ConfirmationTag | "focus";
 };
 
 type CountryFeat = {
@@ -59,7 +64,10 @@ type CountryFeat = {
   __active?: boolean;
 };
 
-function tagColor(tag: ConfirmationTag | "focus", active: boolean): string {
+function parchmentTagColor(
+  tag: ConfirmationTag | "focus",
+  active: boolean,
+): string {
   const alpha = active ? 1 : 0.4;
   switch (tag) {
     case "확립":
@@ -93,6 +101,7 @@ export default function GlobeView({
   activeCard,
   activeClaim,
   dimOthers,
+  intelMode = false,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -100,6 +109,11 @@ export default function GlobeView({
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [countries, setCountries] = useState<CountryFeat[]>([]);
   const [rise, setRise] = useState(0.01);
+
+  const vivid = intelMode || !!activeClaim;
+
+  const colorFor = (tag: ConfirmationTag | "focus", active: boolean) =>
+    vivid ? intelTagColor(tag, active) : parchmentTagColor(tag, active);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,22 +152,23 @@ export default function GlobeView({
     };
   }, []);
 
-  // 벡터 구면: 사진 텍스처 없이 단색 + 국경 폴리곤만
   useEffect(() => {
     const g = globeRef.current;
     if (!g || size.w === 0) return;
     try {
       const mat = g.globeMaterial();
       if (mat) {
-        mat.color?.set?.("#d7c4a0");
-        if (mat.emissive?.set) mat.emissive.set("#c4ae86");
-        mat.emissiveIntensity = 0.12;
-        mat.shininess = 4;
+        mat.color?.set?.(vivid ? "#1a1430" : "#d7c4a0");
+        if (mat.emissive?.set) {
+          mat.emissive.set(vivid ? "#2a1a4a" : "#c4ae86");
+        }
+        mat.emissiveIntensity = vivid ? 0.25 : 0.12;
+        mat.shininess = vivid ? 18 : 4;
       }
     } catch {
       /* ignore */
     }
-  }, [size.w, size.h, countries.length]);
+  }, [size.w, size.h, countries.length, vivid]);
 
   useEffect(() => {
     setRise(0.006);
@@ -162,12 +177,12 @@ export default function GlobeView({
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / 950);
       const eased = 1 - Math.pow(1 - t, 3);
-      setRise(0.006 + eased * 0.09);
+      setRise(0.006 + eased * (vivid ? 0.11 : 0.09));
       if (t < 1) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [activeCard?.id, activeClaim?.id]);
+  }, [activeCard?.id, activeClaim?.id, vivid]);
 
   const activeCountryNames = useMemo(() => {
     if (!activeCard) return Object.values(CARD_COUNTRIES).flat();
@@ -183,10 +198,19 @@ export default function GlobeView({
     });
   }, [countries, activeCountryNames]);
 
-  const { points, arcs, labels } = useMemo(() => {
+  const { points, arcs, htmlLabels } = useMemo(() => {
     const points: PointDatum[] = [];
     const arcs: ArcDatum[] = [];
-    const labels: LabelDatum[] = [];
+    const htmlLabels: HtmlLabel[] = [];
+
+    const pushLabel = (
+      lat: number,
+      lng: number,
+      text: string,
+      tag: ConfirmationTag | "focus",
+    ) => {
+      htmlLabels.push({ lat, lng, text, tag });
+    };
 
     if (!activeCard) {
       for (const card of cards) {
@@ -197,12 +221,13 @@ export default function GlobeView({
             label: p.label,
             tag: "focus",
             active: true,
-            size: 0.45,
+            size: vivid ? 0.55 : 0.45,
             alt: 0.05,
           });
+          pushLabel(p.lat, p.lng, p.label, "focus");
         }
       }
-      return { points, arcs, labels };
+      return { points, arcs, htmlLabels };
     }
 
     const scene = activeClaim?.scene;
@@ -217,6 +242,7 @@ export default function GlobeView({
           size: 0.65,
           alt: 0.07,
         });
+        pushLabel(p.lat, p.lng, p.label, "확립");
       }
     }
 
@@ -229,9 +255,10 @@ export default function GlobeView({
             label: layer.label,
             tag: layer.tag,
             active: true,
-            size: 0.65,
+            size: 0.7,
             alt: 0.08,
           });
+          pushLabel(layer.at[1], layer.at[0], layer.label, layer.tag);
         } else if (layer.type === "arc" && layer.from && layer.to) {
           arcs.push({
             startLat: layer.from[1],
@@ -242,7 +269,7 @@ export default function GlobeView({
             tag: layer.tag,
             active: true,
             dash: layer.tag !== "확립" && layer.tag !== "보도",
-            alt: 0.3,
+            alt: vivid ? 0.36 : 0.3,
           });
         } else if (layer.type === "line" && layer.path && layer.path.length > 1) {
           for (let i = 0; i < layer.path.length - 1; i++) {
@@ -257,28 +284,22 @@ export default function GlobeView({
               tag: layer.tag,
               active: true,
               dash: layer.tag !== "확립" && layer.tag !== "보도",
-              alt: 0.24,
+              alt: vivid ? 0.28 : 0.24,
             });
           }
         }
       }
       for (const c of scene.callouts) {
-        labels.push({
-          lat: c.anchor[1],
-          lng: c.anchor[0],
-          text: c.title,
-          tag: c.tag,
-          active: true,
-        });
         points.push({
           lat: c.anchor[1],
           lng: c.anchor[0],
           label: c.title,
           tag: c.tag,
           active: true,
-          size: 0.5,
+          size: 0.55,
           alt: 0.09,
         });
+        pushLabel(c.anchor[1], c.anchor[0], c.title, c.tag);
       }
     }
 
@@ -299,8 +320,8 @@ export default function GlobeView({
       }
     }
 
-    return { points, arcs, labels };
-  }, [cards, activeCard, activeClaim, dimOthers]);
+    return { points, arcs, htmlLabels };
+  }, [cards, activeCard, activeClaim, dimOthers, vivid]);
 
   useEffect(() => {
     const g = globeRef.current;
@@ -319,7 +340,7 @@ export default function GlobeView({
   const ready = size.w > 0 && size.h > 0;
 
   return (
-    <div className="globe-wrap" ref={wrapRef}>
+    <div className={vivid ? "globe-wrap intel" : "globe-wrap"} ref={wrapRef}>
       {!ready && (
         <div className="globe-placeholder">벡터 지도를 펼치는 중이에요…</div>
       )}
@@ -330,30 +351,35 @@ export default function GlobeView({
           height={size.h}
           globeImageUrl={undefined}
           bumpImageUrl={undefined}
-          backgroundColor="#ebe0c8"
+          backgroundColor={vivid ? "#0d0818" : "#ebe0c8"}
           showAtmosphere
-          atmosphereColor="#c9b896"
-          atmosphereAltitude={0.14}
+          atmosphereColor={vivid ? "#7c4dff" : "#c9b896"}
+          atmosphereAltitude={vivid ? 0.2 : 0.14}
           polygonsData={polygonData}
           polygonAltitude={(d: object) =>
             (d as CountryFeat).__active ? rise : 0.004
           }
-          polygonCapColor={(d: object) =>
-            (d as CountryFeat).__active
+          polygonCapColor={(d: object) => {
+            const active = !!(d as CountryFeat).__active;
+            if (vivid) return intelCountryColors(active).cap;
+            return active
               ? "rgba(176, 120, 56, 0.88)"
-              : "rgba(232, 214, 178, 0.92)"
-          }
-          polygonSideColor={(d: object) =>
-            (d as CountryFeat).__active
+              : "rgba(232, 214, 178, 0.92)";
+          }}
+          polygonSideColor={(d: object) => {
+            const active = !!(d as CountryFeat).__active;
+            if (vivid) return intelCountryColors(active).side;
+            return active
               ? "rgba(110, 70, 30, 0.95)"
-              : "rgba(160, 135, 95, 0.55)"
-          }
-          polygonStrokeColor={(d: object) =>
-            (d as CountryFeat).__active
+              : "rgba(160, 135, 95, 0.55)";
+          }}
+          polygonStrokeColor={(d: object) => {
+            const active = !!(d as CountryFeat).__active;
+            if (vivid) return intelCountryColors(active).stroke;
+            return active
               ? "rgba(70, 42, 18, 0.95)"
-              : "rgba(90, 65, 35, 0.55)"
-          }
-          polygonCapCurvatureResolution={4}
+              : "rgba(90, 65, 35, 0.55)";
+          }}
           polygonsTransitionDuration={750}
           pointsData={points}
           pointLat="lat"
@@ -362,7 +388,7 @@ export default function GlobeView({
           pointRadius={(d: object) => (d as PointDatum).size}
           pointColor={(d: object) => {
             const p = d as PointDatum;
-            return tagColor(p.tag, p.active);
+            return colorFor(p.tag, p.active);
           }}
           pointLabel={(d: object) => (d as PointDatum).label}
           arcsData={arcs}
@@ -371,34 +397,39 @@ export default function GlobeView({
           arcEndLat="endLat"
           arcEndLng="endLng"
           arcAltitude={(d: object) => (d as ArcDatum).alt}
-          arcStroke={1.45}
+          arcStroke={vivid ? 1.7 : 1.45}
           arcColor={(d: object) => {
             const a = d as ArcDatum;
-            const c = tagColor(a.tag, a.active);
+            const c = colorFor(a.tag, a.active);
             return [c, c];
           }}
-          arcDashLength={(d: object) => ((d as ArcDatum).dash ? 0.38 : 0.9)}
-          arcDashGap={(d: object) => ((d as ArcDatum).dash ? 0.16 : 0.06)}
+          arcDashLength={(d: object) => ((d as ArcDatum).dash ? 0.35 : 0.9)}
+          arcDashGap={(d: object) => ((d as ArcDatum).dash ? 0.14 : 0.05)}
           arcDashAnimateTime={(d: object) =>
-            (d as ArcDatum).dash ? 2600 : 4000
+            (d as ArcDatum).dash ? 2200 : 3600
           }
           arcLabel={(d: object) => (d as ArcDatum).label}
-          labelsData={labels}
-          labelLat="lat"
-          labelLng="lng"
-          labelText="text"
-          labelSize={1.2}
-          labelDotRadius={0.35}
-          labelAltitude={0.1}
-          labelColor={(d: object) => {
-            const l = d as LabelDatum;
-            return tagColor(l.tag, l.active);
+          htmlElementsData={htmlLabels}
+          htmlLat="lat"
+          htmlLng="lng"
+          htmlAltitude={0.12}
+          htmlElement={(d: object) => {
+            const item = d as HtmlLabel;
+            const el = document.createElement("div");
+            el.className = vivid ? "globe-html-label intel" : "globe-html-label";
+            el.textContent = item.text;
+            el.style.borderColor = colorFor(item.tag, true);
+            return el;
           }}
         />
       )}
       <div className="globe-legend" aria-hidden>
-        <span className="lg block">솟은 나라 = 지금 이야기</span>
-        <span className="lg arrow">먹선 화살표 = 흐름</span>
+        <span className="lg block">
+          {vivid ? "인텔 · 솟은 나라" : "솟은 나라 = 이야기"}
+        </span>
+        <span className="lg arrow">
+          {vivid ? "알록달록 화살표 = 흐름" : "먹선 화살표 = 흐름"}
+        </span>
       </div>
     </div>
   );

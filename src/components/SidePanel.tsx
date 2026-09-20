@@ -111,7 +111,7 @@ export default function SidePanel(props: Props) {
               <h2>어떻게 쓰면 돼요?</h2>
               <ol className="how-to">
                 <li>뉴스를 붙여넣고 ‘쉽게 풀어줘’를 눌러요.</li>
-                <li>왼쪽 지구본에서 나라가 블록처럼 솟아올라요.</li>
+                <li>왼쪽 검은 인텔 맵에서 관련국이 붉게 번져요.</li>
                 <li>아래 카드를 눌러 이야기를 더 깊게 봐요.</li>
               </ol>
             </section>
@@ -177,7 +177,7 @@ export default function SidePanel(props: Props) {
               <h2>이야기 카드</h2>
               <p className="muted block-lead">
                 세계가 얽힌 이야기 {cards.length}장이에요. 하나를 누르면 왼쪽
-                지도가 그 나라들을 블록처럼 들어 올려요.
+                맵에서 관련국이 붉게 번져요.
               </p>
               <ul className="card-list">
                 {cards.map((c, i) => (
@@ -289,7 +289,7 @@ export default function SidePanel(props: Props) {
           <section className="block">
             <h2>연결고리</h2>
             <p className="muted">
-              고리를 누르면 왼쪽 지구본에 화살표가 블록처럼 솟아올라요.
+              고리를 누르면 왼쪽 맵에 알록달록한 화살표·점이 떠요.
             </p>
             <ul className="claim-list">
               {activeCard.claims.map((claim) => (

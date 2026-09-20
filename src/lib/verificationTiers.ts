@@ -576,14 +576,14 @@ export function intelCountryColors(active: boolean): {
 } {
   if (active) {
     return {
-      cap: "rgba(255, 64, 129, 0.85)",
-      side: "rgba(124, 77, 255, 0.9)",
-      stroke: "rgba(0, 229, 255, 0.95)",
+      cap: "rgba(220, 28, 28, 0.48)",
+      side: "rgba(140, 8, 8, 0.62)",
+      stroke: "rgba(255, 70, 55, 0.92)",
     };
   }
   return {
-    cap: "rgba(232, 214, 178, 0.75)",
-    side: "rgba(160, 135, 95, 0.45)",
-    stroke: "rgba(90, 65, 35, 0.45)",
+    cap: "rgba(8, 12, 18, 0.92)",
+    side: "rgba(4, 6, 10, 0.7)",
+    stroke: "rgba(40, 55, 70, 0.35)",
   };
 }

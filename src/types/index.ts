@@ -16,6 +16,8 @@ export interface SourceRef {
   url?: string;
 }
 
+export type GlobeMarker = "dot" | "fire";
+
 export interface GlobeLayer {
   type: LayerType;
   label: string;
@@ -26,6 +28,8 @@ export interface GlobeLayer {
   /** for arc: start and end */
   from?: [number, number];
   to?: [number, number];
+  /** 전장·폭격 지점 도장 (기본 dot) */
+  marker?: GlobeMarker;
 }
 
 export interface Callout {

@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
-import { Fraunces, Source_Serif_4 } from "next/font/google";
+import { Space_Grotesk, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 
-const display = Fraunces({
+const display = Space_Grotesk({
   subsets: ["latin"],
-  variable: "--font-fraunces",
+  variable: "--font-space",
   display: "swap",
 });
 
-const body = Source_Serif_4({
+const body = Noto_Sans_KR({
   subsets: ["latin"],
-  variable: "--font-source",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-plex",
   display: "swap",
 });
 

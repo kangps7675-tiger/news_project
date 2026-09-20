@@ -8,7 +8,7 @@ import SidePanel, { type PanelLevel } from "@/components/SidePanel";
 
 const GlobeView = dynamic(() => import("@/components/GlobeView"), {
   ssr: false,
-  loading: () => <div className="globe-placeholder">지구본을 그리는 중이에요…</div>,
+  loading: () => <div className="globe-placeholder">인텔 맵을 그리는 중이에요…</div>,
 });
 
 class GlobeErrorBoundary extends Component<
@@ -18,14 +18,14 @@ class GlobeErrorBoundary extends Component<
   state = { error: null as string | null };
 
   static getDerivedStateFromError(err: Error) {
-    return { error: err.message || "지구본을 표시할 수 없습니다." };
+    return { error: err.message || "인텔 맵을 표시할 수 없습니다." };
   }
 
   render() {
     if (this.state.error) {
       return (
         <div className="globe-placeholder">
-          <p>지구본이 잠깐 말을 안 들어요.</p>
+          <p>인텔 맵이 잠깐 말을 안 들어요.</p>
           <p className="muted">새로고침해 보거나, 잠시 뒤 다시 와 주세요.</p>
         </div>
       );
@@ -42,19 +42,16 @@ export default function AppShell() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [intelMode, setIntelMode] = useState(false);
 
   const selectCard = useCallback((card: NetworkCard) => {
     setActiveCard(card);
     setActiveClaim(null);
     setLevel("L1");
-    setIntelMode(true);
   }, []);
 
   const selectClaim = useCallback((claim: Claim) => {
     setActiveClaim(claim);
     setLevel("L2");
-    setIntelMode(true);
   }, []);
 
   const goRelated = useCallback((cardId: string) => {
@@ -73,7 +70,6 @@ export default function AppShell() {
       setActiveCard(null);
       setActiveClaim(null);
       setLevel("L0");
-      setIntelMode(false);
     }
   }, [level]);
 
@@ -112,24 +108,14 @@ export default function AppShell() {
   }, [newsText]);
 
   return (
-    <div className={intelMode ? "shell intel-on" : "shell"}>
+    <div className="shell intel-on">
       <div className="globe-pane">
-        <div className="intel-toggle-bar">
-          <button
-            type="button"
-            className={intelMode ? "intel-toggle on" : "intel-toggle"}
-            onClick={() => setIntelMode((v) => !v)}
-          >
-            {intelMode ? "인텔 모드 ON" : "인텔 모드"}
-          </button>
-        </div>
         <GlobeErrorBoundary>
           <GlobeView
             cards={cards}
             activeCard={activeCard}
             activeClaim={activeClaim}
             dimOthers={!!activeClaim}
-            intelMode={intelMode}
           />
         </GlobeErrorBoundary>
       </div>

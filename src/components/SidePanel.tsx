@@ -105,33 +105,18 @@ export default function SidePanel(props: Props) {
         {level === "L0" && (
           <>
             <section className="block">
-              <h2>네트워크 카드</h2>
-              <p className="muted">카드를 고르거나 뉴스를 붙여넣으세요.</p>
-              <ul className="card-list">
-                {cards.map((c) => (
-                  <li key={c.id}>
-                    <button
-                      type="button"
-                      className="card-btn"
-                      onClick={() => onSelectCard(c)}
-                    >
-                      <span className="card-title">{c.name}</span>
-                      <span className="card-sum">{c.summary}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="block">
               <h2>뉴스 붙여넣기</h2>
+              <p className="muted block-lead">
+                본문을 넣으면 4단 해설과 맞는 네트워크 카드로 연결합니다.
+              </p>
               <textarea
                 value={newsText}
                 onChange={(e) => onNewsChange(e.target.value)}
                 placeholder="뉴스 본문을 붙여넣어 주세요 (100~5,000자)"
-                rows={8}
+                rows={6}
                 maxLength={5000}
               />
+              <p className="char-count">{len} / 5,000</p>
               {lenHint && <p className="warn">{lenHint}</p>}
               {error && <p className="warn">{error}</p>}
               <div className="row">
@@ -153,7 +138,7 @@ export default function SidePanel(props: Props) {
               </div>
               {loading && (
                 <p className="muted loading-hint">
-                  배경을 푸는 중입니다. 최대 30초 정도 걸릴 수 있습니다.
+                  배경을 푸는 중입니다. 최대 30초 걸릴 수 있습니다.
                 </p>
               )}
             </section>
@@ -171,6 +156,30 @@ export default function SidePanel(props: Props) {
                 {analysis.rejectionReason || "뉴스 본문을 붙여넣어 주세요"}
               </p>
             )}
+
+            <section className="block">
+              <h2>네트워크 카드</h2>
+              <p className="muted block-lead">
+                카드 {cards.length}개 · 골라서 지구본에서 고리를 따라가 보세요.
+              </p>
+              <ul className="card-list">
+                {cards.map((c, i) => (
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      className="card-btn"
+                      onClick={() => onSelectCard(c)}
+                    >
+                      <span className="card-index">{String(i + 1).padStart(2, "0")}</span>
+                      <span className="card-copy">
+                        <span className="card-title">{c.name}</span>
+                        <span className="card-sum">{c.summary}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
           </>
         )}
 

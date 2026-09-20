@@ -1,10 +1,38 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { Component, useCallback, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { cards, getCardById } from "@/data/cards";
 import type { AnalysisResult, Claim, NetworkCard } from "@/types";
-import GlobeView from "@/components/GlobeView";
 import SidePanel, { type PanelLevel } from "@/components/SidePanel";
+
+const GlobeView = dynamic(() => import("@/components/GlobeView"), {
+  ssr: false,
+  loading: () => <div className="globe-placeholder">지구본 불러오는 중…</div>,
+});
+
+class GlobeErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: string | null }
+> {
+  state = { error: null as string | null };
+
+  static getDerivedStateFromError(err: Error) {
+    return { error: err.message || "지구본을 표시할 수 없습니다." };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="globe-placeholder">
+          <p>지구본을 불러오지 못했습니다.</p>
+          <p className="muted">{this.state.error}</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function AppShell() {
   const [level, setLevel] = useState<PanelLevel>("L0");
@@ -82,12 +110,14 @@ export default function AppShell() {
   return (
     <div className="shell">
       <div className="globe-pane">
-        <GlobeView
-          cards={cards}
-          activeCard={activeCard}
-          activeClaim={activeClaim}
-          dimOthers={!!activeClaim}
-        />
+        <GlobeErrorBoundary>
+          <GlobeView
+            cards={cards}
+            activeCard={activeCard}
+            activeClaim={activeClaim}
+            dimOthers={!!activeClaim}
+          />
+        </GlobeErrorBoundary>
       </div>
       <SidePanel
         cards={cards}

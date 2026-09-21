@@ -101,9 +101,14 @@ ${newsText}
   return parsed;
 }
 
+function needsKoreanTranslation(t: string): boolean {
+  const hangul = (t.match(/[\uac00-\ud7a3]/g) || []).length;
+  return hangul < Math.max(2, t.length * 0.25);
+}
+
 /**
  * 영문(또는 기타) 뉴스 헤드라인을 자연스러운 한국어로 번역.
- * 실패·키 없으면 원문 배열을 그대로 반환.
+ * 필수: 가능한 한 한글로 돌려준다. 키 없거나 전부 실패 시에만 원문.
  */
 export async function translateTitlesToKorean(
   titles: string[],
@@ -112,28 +117,31 @@ export async function translateTitlesToKorean(
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return titles;
 
-  // 이미 한글이 많으면 번역 스킵
-  const need = titles.map((t) => {
-    const hangul = (t.match(/[\uac00-\ud7a3]/g) || []).length;
-    return hangul < Math.max(2, t.length * 0.25);
-  });
+  const need = titles.map(needsKoreanTranslation);
   if (!need.some(Boolean)) return titles;
 
-  try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-3.6-flash",
-      generationConfig: {
-        temperature: 0.2,
-        maxOutputTokens: 4096,
-        responseMimeType: "application/json",
-      },
-    });
+  // 배치 단위로 번역 (실패 시 절반으로 나눠 재시도)
+  const out = [...titles];
+  const indices = titles.map((_, i) => i).filter((i) => need[i]);
 
-    const payload = titles.map((t, i) => ({ i, t }));
-    const prompt = `뉴스 헤드라인을 자연스러운 한국어로 번역하세요.
+  const runBatch = async (idxs: number[]): Promise<boolean> => {
+    if (!idxs.length) return true;
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({
+        model: "gemini-3.6-flash",
+        generationConfig: {
+          temperature: 0.15,
+          maxOutputTokens: 4096,
+          responseMimeType: "application/json",
+        },
+      });
+
+      const payload = idxs.map((i) => ({ i, t: titles[i] }));
+      const prompt = `뉴스 헤드라인을 자연스러운 한국어로 번역하세요.
 규칙:
-- 입력 JSON 배열의 각 항목 t를 번역해 같은 길이·같은 순서의 문자열 배열만 반환
+- 반드시 {"translations":[{"i":번호,"t":"한국어 제목"},...]} 형식의 JSON만 반환
+- translations 길이와 입력 길이가 같아야 함. i는 입력의 i를 그대로 유지
 - 고유명사(지명·인명·매체명·약어)는 음차 또는 통용 표기 유지
 - 의미 추가·요약·해설 금지. 제목만 번역
 - 마크다운 코드펜스 금지
@@ -142,37 +150,78 @@ export async function translateTitlesToKorean(
 ${JSON.stringify(payload)}
 `;
 
-    const result = await model.generateContent(prompt);
-    const raw = extractJson(result.response.text());
-    const parsed = JSON.parse(raw) as unknown;
-    let arr: string[] | null = null;
-    if (Array.isArray(parsed)) {
-      arr = parsed.map((x) =>
-        typeof x === "string"
-          ? x
-          : typeof x === "object" && x && "t" in x
-            ? String((x as { t: unknown }).t)
-            : "",
-      );
+      const result = await model.generateContent(prompt);
+      const raw = extractJson(result.response.text());
+      const parsed = JSON.parse(raw) as unknown;
+      const arr = coerceTranslationArray(parsed, idxs.length);
+      if (!arr) return false;
+
+      for (let k = 0; k < idxs.length; k++) {
+        const tr = (arr[k] || "").trim();
+        if (tr) out[idxs[k]] = tr;
+      }
+      return arr.filter((t) => t.trim()).length >= Math.ceil(idxs.length * 0.5);
+    } catch (err) {
+      console.warn("[translateTitlesToKorean]", err);
+      return false;
     }
-    if (!arr || arr.length !== titles.length) return titles;
-    return titles.map((orig, i) => {
-      if (!need[i]) return orig;
-      const tr = (arr![i] || "").trim();
-      return tr || orig;
-    });
-  } catch (err) {
-    console.warn("[translateTitlesToKorean]", err);
-    return titles;
+  };
+
+  // 1차 전체 → 실패 시 절반씩 → 그래도 남은 항목은 3개씩
+  let ok = await runBatch(indices);
+  if (!ok && indices.length > 1) {
+    const mid = Math.ceil(indices.length / 2);
+    await runBatch(indices.slice(0, mid));
+    await runBatch(indices.slice(mid));
   }
+  const still = indices.filter((i) => needsKoreanTranslation(out[i]));
+  if (still.length) {
+    for (let i = 0; i < still.length; i += 3) {
+      await runBatch(still.slice(i, i + 3));
+    }
+  }
+
+  return out;
+}
+
+function coerceTranslationArray(
+  parsed: unknown,
+  expected: number,
+): string[] | null {
+  if (Array.isArray(parsed)) {
+    if (parsed.length !== expected) return null;
+    return parsed.map((x) =>
+      typeof x === "string"
+        ? x
+        : typeof x === "object" && x && "t" in x
+          ? String((x as { t: unknown }).t)
+          : "",
+    );
+  }
+  if (parsed && typeof parsed === "object") {
+    const obj = parsed as Record<string, unknown>;
+    for (const key of ["translations", "titles", "items", "results"]) {
+      const v = obj[key];
+      if (Array.isArray(v)) return coerceTranslationArray(v, expected);
+    }
+  }
+  return null;
 }
 
 function extractJson(s: string) {
-  const cleaned = s.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start >= 0 && end > start) {
-    return cleaned.slice(start, end + 1);
+  const cleaned = s
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+  const objStart = cleaned.indexOf("{");
+  const arrStart = cleaned.indexOf("[");
+  if (objStart >= 0 && (arrStart < 0 || objStart < arrStart)) {
+    const end = cleaned.lastIndexOf("}");
+    if (end > objStart) return cleaned.slice(objStart, end + 1);
+  }
+  if (arrStart >= 0) {
+    const end = cleaned.lastIndexOf("]");
+    if (end > arrStart) return cleaned.slice(arrStart, end + 1);
   }
   return cleaned;
 }

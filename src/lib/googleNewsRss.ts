@@ -104,11 +104,17 @@ const TERM_ALIASES: Record<string, string[]> = {
   산둥: ["Shandong China oil"],
   송유관: ["oil pipeline Saudi"],
   동서: ["East West Pipeline Saudi"],
-  쇄빙: ["icebreaker Arctic"],
+  쇄빙: ["icebreaker Arctic", "icebreaker"],
+  북극항로: ["Arctic shipping route", "Arctic sea route"],
   북동항로: ["Northern Sea Route", "NSR Arctic"],
+  북서항로: ["Northwest Passage", "Northwest Passage Arctic"],
   그린란드: ["Greenland"],
   희토류: ["rare earth"],
+  빙상: ["Polar Silk Road", "Ice Silk Road"],
+  실크로드: ["Polar Silk Road"],
   수출통제: ["export control China"],
+  탄브리즈: ["Tanbreez Greenland", "Tanbreez rare earth"],
+  아크틱: ["Arctic LNG"],
   남오세티아: ["South Ossetia MRB"],
   루블: ["ruble banking North Korea"],
   파병: ["North Korea troops Russia"],
@@ -122,6 +128,7 @@ const TERM_ALIASES: Record<string, string[]> = {
   재보급: ["Iran Russia resupply"],
   INSTC: ["INSTC corridor", "International North South Transport Corridor"],
   NSR: ["Northern Sea Route"],
+  NWP: ["Northwest Passage"],
   MRB: ["MRB bank South Ossetia"],
   MSMT: ["North Korea Russia military"],
   KN: ["KN-23 missile"],
@@ -130,6 +137,47 @@ const TERM_ALIASES: Record<string, string[]> = {
   Bella: ["Bella 1 tanker", "Marinera"],
   Anna: ["Iran ship Caspian Anna"],
 };
+
+/** 관련도 판정용 — 제목·출처에 나와야 하는 영문 토큰(소문자) */
+const RELEVANCE_STEMS: string[] = [
+  "houthi",
+  "yemen",
+  "saudi",
+  "red sea",
+  "bab el-mandeb",
+  "bab-el-mandeb",
+  "hormuz",
+  "iran",
+  "israel",
+  "gaza",
+  "hezbollah",
+  "ukraine",
+  "russia",
+  "north korea",
+  "dprk",
+  "china",
+  "taiwan",
+  "natanz",
+  "fordow",
+  "shahed",
+  "geran",
+  "yelabuga",
+  "crimea",
+  "caspian",
+  "instc",
+  "shadow fleet",
+  "tanker",
+  "greenland",
+  "arctic",
+  "northern sea route",
+  "northwest passage",
+  "rare earth",
+  "icebreaker",
+  "tanbreez",
+  "polar silk",
+  "nsr",
+  "nwp",
+];
 
 /** @deprecated 호환용 — 영문 쿼리 빌더 사용 */
 export function buildSearchQuery(text: string, maxLen = 110): string {
@@ -143,7 +191,8 @@ export function buildSearchQueries(text: string): string[] {
 }
 
 /**
- * 카드·주장 텍스트 → 짧은 영문 검색어 목록 (넓은 것 → 좁은 것).
+ * 카드·주장 텍스트 → 짧은 영문 검색어 목록 (좁은 것 → 넓은 것).
+ * 주제와 무관한 단일어 폴백을 줄이기 위해 구문·AND 조합을 우선한다.
  */
 export function buildEnglishQueries(text: string): string[] {
   const tokens = extractKeywords(text);
@@ -152,25 +201,115 @@ export function buildEnglishQueries(text: string): string[] {
   const out: string[] = [];
   const push = (q: string) => {
     const t = q.replace(/\s+/g, " ").trim();
-    if (t.length < 2) return;
+    if (t.length < 3) return;
     if (!out.some((u) => u.toLowerCase() === t.toLowerCase())) out.push(t);
   };
 
-  // 넓은 조합 → 짧은 단어 (폴백용)
-  if (enTerms.length >= 2) push(enTerms.slice(0, 4).join(" "));
-  if (enTerms.length >= 2) push(enTerms.slice(0, 2).join(" "));
-  for (const t of enTerms.slice(0, 6)) push(t);
+  // 1) 핵심 구문 그대로 (가장 정확)
+  if (enTerms.length >= 3) {
+    push(`"${enTerms[0]}" "${enTerms[1]}"`);
+    push(enTerms.slice(0, 3).join(" "));
+  }
+  if (enTerms.length >= 2) {
+    push(`"${enTerms[0]}" ${enTerms[1]}`);
+    push(enTerms.slice(0, 2).join(" "));
+    push(`${enTerms[0]} AND ${enTerms[1]}`);
+  }
+
+  // 2) 주제+지역/행위 조합 (깊이)
+  const anchors = enTerms.slice(0, 4);
+  for (let i = 0; i < anchors.length; i++) {
+    for (let j = i + 1; j < anchors.length; j++) {
+      push(`${anchors[i]} ${anchors[j]}`);
+    }
+  }
+
+  // 3) 단일 핵심어는 길거나 고유명사일 때만 (잡음 방지)
+  for (const t of enTerms.slice(0, 5)) {
+    if (t.split(/\s+/).length >= 2 || t.length >= 8) push(t);
+  }
 
   // 본문에 이미 있는 영문 토큰 (INSTC, NSR…)
   for (const t of tokens) {
-    if (/^[A-Za-z][A-Za-z0-9.\-]{1,24}$/.test(t)) push(t);
+    if (/^[A-Za-z][A-Za-z0-9.\-]{2,24}$/.test(t)) push(t);
   }
 
+  if (!out.length && enTerms[0]) push(enTerms[0]);
   if (!out.length) {
-    push("geopolitics conflict");
-    push("international news");
+    // 최후: 입력에서 뽑아낸 키워드 조합 (다른 대륙 주제로 새지 않음)
+    const fallback = tokens
+      .filter((t) => t.length >= 2)
+      .slice(0, 4)
+      .join(" ");
+    if (fallback) push(fallback);
   }
   return out;
+}
+
+/** 관련도 판정에 쓸 영문 시드 (소문자) */
+export function topicRelevanceSeeds(text: string): string[] {
+  const tokens = extractKeywords(text);
+  const enTerms = collectEnglishTerms(text, tokens);
+  const seeds = new Set<string>();
+  for (const t of enTerms) {
+    const low = t.toLowerCase();
+    seeds.add(low);
+    for (const stem of RELEVANCE_STEMS) {
+      if (low.includes(stem) || stem.includes(low)) seeds.add(stem);
+    }
+  }
+  for (const t of tokens) {
+    if (/^[A-Za-z]{3,}$/.test(t)) seeds.add(t.toLowerCase());
+  }
+  // 한글 별칭이 텍스트에 있으면 해당 영문도 시드
+  const hay = text.toLowerCase();
+  for (const [ko, ens] of Object.entries(TERM_ALIASES)) {
+    if (!hay.includes(ko.toLowerCase())) continue;
+    for (const en of ens) seeds.add(en.toLowerCase());
+  }
+  return [...seeds].filter((s) => s.length >= 3);
+}
+
+function relevanceScore(
+  item: { title: string; source: string },
+  seeds: string[],
+): number {
+  if (!seeds.length) return 1;
+  const hay = `${item.title} ${item.source}`.toLowerCase();
+  let hits = 0;
+  let weight = 0;
+  for (const s of seeds) {
+    if (hay.includes(s)) {
+      hits += 1;
+      weight += Math.min(3, Math.ceil(s.length / 4));
+    }
+  }
+  if (hits === 0) return 0;
+  return weight + hits * 2;
+}
+
+function filterByRelevance<T extends { title: string; source: string }>(
+  items: T[],
+  seeds: string[],
+  minScore = 2,
+): T[] {
+  if (!seeds.length || !items.length) return items;
+  const scored = items
+    .map((item) => ({ item, score: relevanceScore(item, seeds) }))
+    .filter((x) => x.score >= minScore)
+    .sort((a, b) => b.score - a.score);
+  // 너무 빡세면 완화 (최소 4건 목표)
+  if (scored.length >= 4) return scored.map((x) => x.item);
+  const soft = items
+    .map((item) => ({ item, score: relevanceScore(item, seeds) }))
+    .filter((x) => x.score >= 1)
+    .sort((a, b) => b.score - a.score);
+  if (soft.length >= 3) return soft.map((x) => x.item);
+  // 그래도 없으면 원본 유지하되 점수순
+  return items
+    .map((item) => ({ item, score: relevanceScore(item, seeds) }))
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.item);
 }
 
 function collectEnglishTerms(text: string, tokens: string[]): string[] {
@@ -278,7 +417,7 @@ export async function fetchGoogleNewsRss(
 }
 
 /**
- * 영문 검색어로 RSS를 긁고, 비면 단계적으로 넓힌 뒤
+ * 영문 검색어로 RSS를 깊게 긁고, 주제 관련도로 거른 뒤
  * 제목을 한글로 번역해 돌려준다.
  */
 export async function fetchRelatedNews(
@@ -286,88 +425,103 @@ export async function fetchRelatedNews(
   limit = 24,
 ): Promise<{ query: string; items: GoogleNewsItem[] }> {
   const queries = buildEnglishQueries(text);
-  const topic = queries[0] || "geopolitics";
-  if (!topic) return { query: "", items: [] };
+  const seeds = topicRelevanceSeeds(text);
+  const topic = queries[0] || seeds[0] || text.slice(0, 80);
+  if (!topic.trim()) return { query: "", items: [] };
 
   let raw: Omit<GoogleNewsItem, "url">[] = [];
 
-  // 1) 열린 영문 검색 (when 없음) — 가장 잘 붙음
+  // 1) 좁은 구문·AND 쿼리 우선 (when:30d 로 최근 보도)
+  const deepQs = queries.slice(0, 5);
   raw = await mergeRaw(
     raw,
     runJobs(
-      queries.slice(0, 4).flatMap((q) => [
+      deepQs.flatMap((q) => [
+        { base: FEED.en, q: `${q} when:30d`, n: 12, tag: `deep30/${q.slice(0, 24)}` },
         { base: FEED.en, q, n: 10, tag: `open-en/${q.slice(0, 24)}` },
       ]),
     ),
   );
+  raw = filterByRelevance(raw, seeds, 2);
 
-  // 2) 결과 부족하면 site: T1~T4 (영문 색인)
+  // 2) 결과 부족하면 site: T1~T4 (영문 색인) — 핵심 쿼리만
   if (raw.length < 10) {
     const siteJobs: FeedJob[] = [];
+    const core = deepQs.slice(0, 2);
     for (const tier of TIER_ORDER) {
       const chunks = siteQueryChunks(tier, 5).slice(0, TIER_CHUNK_CAP[tier]);
       for (const sitePart of chunks) {
         for (const win of TIER_WINDOWS[tier]) {
-          siteJobs.push({
-            base: FEED[win],
-            q: `${topic} ${sitePart}`,
-            n: 8,
-            tag: `site-${tier}/${win}`,
-          });
+          for (const q of core) {
+            siteJobs.push({
+              base: FEED[win],
+              q: `${q} ${sitePart}`,
+              n: 8,
+              tag: `site-${tier}/${win}`,
+            });
+          }
         }
       }
     }
-    raw = await mergeRaw(raw, runJobs(siteJobs));
+    raw = filterByRelevance(await mergeRaw(raw, runJobs(siteJobs)), seeds, 2);
   }
 
-  // 3) 다른 로케일에 같은 영문 쿼리
+  // 3) 다른 로케일 — 같은 주제 쿼리만 (잡음 주제 주입 금지)
   if (raw.length < 8) {
     const locales: FeedKey[] = ["de", "ko", "ar", "ru", "zh"];
-    raw = await mergeRaw(
-      raw,
-      runJobs(
-        queries.slice(0, 2).flatMap((q) =>
-          locales.map((win) => ({
-            base: FEED[win],
-            q,
-            n: 6,
-            tag: `locale/${win}`,
-          })),
+    raw = filterByRelevance(
+      await mergeRaw(
+        raw,
+        runJobs(
+          deepQs.slice(0, 2).flatMap((q) =>
+            locales.map((win) => ({
+              base: FEED[win],
+              q,
+              n: 8,
+              tag: `locale/${win}`,
+            })),
+          ),
         ),
       ),
+      seeds,
+      1,
     );
   }
 
-  // 4) 한 단어씩 폴백
+  // 4) 조금 더 넓은 주제 조합 (단일어 단독 검색은 피함)
   if (raw.length < 6) {
     for (const q of queries) {
-      if (raw.length >= 12) break;
-      raw = await mergeRaw(
-        raw,
-        runJobs([{ base: FEED.en, q, n: 10, tag: `word/${q.slice(0, 20)}` }]),
+      if (raw.length >= 14) break;
+      if (q.split(/\s+/).length < 2 && q.length < 10) continue;
+      raw = filterByRelevance(
+        await mergeRaw(
+          raw,
+          runJobs([{ base: FEED.en, q: `${q} when:90d`, n: 12, tag: `wide/${q.slice(0, 20)}` }]),
+        ),
+        seeds,
+        1,
       );
     }
   }
 
-  // 5) 최후 — 그래도 비면 넓은 영문 주제
-  if (raw.length === 0) {
+  // 5) 최후 — 주제 시드 안에서만 재검색 (다른 전쟁·지역으로 새지 않음)
+  if (raw.length < 4) {
     const resorts = [
-      topic,
-      ...queries.slice(0, 3),
-      "Middle East conflict",
-      "Ukraine Russia war",
-      "Red Sea shipping",
-    ];
+      ...deepQs.slice(0, 3),
+      seeds.filter((s) => s.includes(" ")).slice(0, 3).join(" "),
+      seeds.slice(0, 3).join(" "),
+    ].filter(Boolean);
     for (const q of resorts) {
       raw = await mergeRaw(
         raw,
         runJobs([{ base: FEED.en, q, n: 12, tag: `last/${q.slice(0, 20)}` }]),
       );
+      raw = filterByRelevance(raw, seeds, 1);
       if (raw.length >= 6) break;
     }
   }
 
-  raw = sortByPublishedDesc(raw).slice(0, 48);
+  raw = sortByPublishedDesc(filterByRelevance(raw, seeds, 1)).slice(0, 48);
 
   const resolved = await mapPool(raw, 10, async (item, index) => {
     const real =
@@ -384,11 +538,18 @@ export async function fetchRelatedNews(
     };
   });
 
-  let balanced = balanceByTier(resolved, limit);
+  // 관련도 높은 순으로 다시 정렬한 뒤 티어 균형
+  const ranked = [...resolved].sort((a, b) => {
+    const ds = relevanceScore(b, seeds) - relevanceScore(a, seeds);
+    if (ds !== 0) return ds;
+    return publishedMs(b.publishedAt) - publishedMs(a.publishedAt);
+  });
 
-  // 제목 한글 번역 (실패 시 원문 유지)
+  let balanced = balanceByTier(ranked, limit);
+
+  // 제목 한글 번역 필수
   const originals = balanced.map((i) => i.title);
-  const translated = await translateTitlesToKorean(originals).catch(() => originals);
+  const translated = await translateTitlesToKorean(originals);
   balanced = balanced.map((item, i) => ({
     ...item,
     titleOriginal: originals[i],

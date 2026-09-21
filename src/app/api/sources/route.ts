@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       query,
       items: withTier,
-      note: "영문 검색어로 모은 뒤 제목은 한글로 보여 줘요. 티어는 바꾸지 않아요.",
+      note: "주제와 정확히 맞는 영문 보도를 깊게 모은 뒤, 제목은 한글로 번역해 보여 줘요.",
     });
   } catch (err) {
     console.error("[sources]", err);

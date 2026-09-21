@@ -1071,6 +1071,7 @@ export const cards: NetworkCard[] = [
     triggers: [
       "북극항로",
       "북동항로",
+      "북서항로",
       "빙상 실크로드",
       "그린란드",
       "탄브리즈",
@@ -1094,6 +1095,7 @@ export const cards: NetworkCard[] = [
     asOf: "2026-09-20",
     focusPoints: [
       { lat: 72.0, lng: -40.0, label: "그린란드" },
+      { lat: 74.0, lng: -95.0, label: "북서항로" },
       { lat: 72.0, lng: 140.0, label: "북동항로" },
       { lat: 35.0, lng: 105.0, label: "중국 희토류" },
     ],
@@ -1128,10 +1130,31 @@ export const cards: NetworkCard[] = [
               ],
             },
             {
+              type: "line",
+              label: "북서항로",
+              tag: "분석",
+              dashed: true,
+              path: [
+                [-56, 66],
+                [-70, 74],
+                [-85, 74],
+                [-100, 74],
+                [-120, 72],
+                [-140, 71],
+                [-168, 66],
+              ],
+            },
+            {
               type: "point",
               label: "아크틱 LNG 2",
               tag: "보도",
               at: [73.5, 71.0],
+            },
+            {
+              type: "point",
+              label: "그린란드",
+              tag: "확립",
+              at: [-40, 72],
             },
           ],
           callouts: [
@@ -1140,6 +1163,12 @@ export const cards: NetworkCard[] = [
               title: "북동항로 (NSR)",
               tag: "분석",
               note: "중국 '빙상 실크로드'는 발표 수준으로 점선 취급",
+            },
+            {
+              anchor: [-95, 74],
+              title: "북서항로 (NWP)",
+              tag: "분석",
+              note: "캐나다 쪽. 통항량은 NSR보다 적다",
             },
           ],
         },
@@ -1158,7 +1187,7 @@ export const cards: NetworkCard[] = [
         caveat: "발언·위협과 실제 조치를 구분한다. 영유권은 '주장 영역'으로만",
         scene: {
           asOf: "2026-07-07",
-          camera: { lat: 72, lng: -40, altitude: 1.3 },
+          camera: { lat: 72, lng: -55, altitude: 1.45 },
           layers: [
             {
               type: "point",
@@ -1172,6 +1201,21 @@ export const cards: NetworkCard[] = [
               tag: "분석",
               at: [-45.5, 61.0],
             },
+            {
+              type: "line",
+              label: "북서항로",
+              tag: "분석",
+              dashed: true,
+              path: [
+                [-56, 66],
+                [-70, 74],
+                [-85, 74],
+                [-100, 74],
+                [-120, 72],
+                [-140, 71],
+                [-168, 66],
+              ],
+            },
           ],
           callouts: [
             {
@@ -1179,6 +1223,12 @@ export const cards: NetworkCard[] = [
               title: "그린란드 (주장·대응)",
               tag: "확립",
               note: "미국 성명 vs 그린란드·덴마크 당사자 주장",
+            },
+            {
+              anchor: [-95, 74],
+              title: "북서항로 (NWP)",
+              tag: "분석",
+              note: "캐나다 쪽 북극항로. 통항량은 북동항로(NSR)보다 적다",
             },
           ],
         },
